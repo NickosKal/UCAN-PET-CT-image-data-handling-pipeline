@@ -7,9 +7,8 @@ Logic programming to select specific CT and PET images.
 """
 path = "Selected_for_Sorting_test/"
 
-# Check if bot CT and PET files exist in the patient folder
-ct_folder = False
-pt_folder = False
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", 12000)
 
 ### Rules for CT
 CT_specifications = ["WB", "ax", "Venfas"]
@@ -23,28 +22,30 @@ for root, dirs, files in os.walk(path, topdown=False):
     for name in dirs:
         directory_list.append(os.path.join(root, name))
 
-# df = pd.DataFrame(directory_list, columns=['directry'])
-# # print(df.iloc[0:2, 0:])
-#
-# df[['sourcedir', 'patientinfo']] = df['directry'].str.split(pat='/', n=1, expand=True)
-# # print(df.iloc[0:2, 0:])
-#
-# df[['patientdir', 'PET-CTinfo']] = df['patientinfo'].str.split(pat='\\', n=1, expand=True)
-# # print(df.iloc[0:2, 0:])
-#
-# df[['system', 'npr', 'scandate']] = df['patientdir'].str.split(pat='_|-', n=2, expand=True)
-# print(df.iloc[0:, 0:])
+df = pd.DataFrame(directory_list, columns=['directory'])
 
-for folder_path in directory_list:
+df[['source_directory', 'patient_info']] = df['directory'].str.split(pat='/', n=1, expand=True)
+
+df[['patient_directory', 'PET-CT_info']] = df['patient_info'].str.split(pat='\\', n=1, expand=True)
+
+df[['system', 'npr', 'scan_date']] = df['patient_directory'].str.split(pat='_|-', n=2, expand=True)
+
+temp_df = df.groupby(['npr', 'scan_date']).apply(
+    lambda x: True if x['PET-CT_info'].str.startswith('CT').any() and x['PET-CT_info'].str.startswith(
+        'PT').any() else False).reset_index()
+# print(temp_df)
+temp_df = temp_df[temp_df['0' == True]]
+
+new_df = pd.merge(temp_df, df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
+
+final_df = new_df.dropna()
+
+for folder_path in final_df["directory"]:
     first_split_of_path = folder_path.split("/")
     second_part_of_path = first_split_of_path[1]
     # print(second_part_of_path)
     second_split_of_path = second_part_of_path.split("\\")
     # print(second_split_of_path)
-    # for item in second_split_of_path:
-    #     print(item)
-    # if second_split_of_path[1].startswith("CT-") and second_split_of_path[1].startswith("PT-"):
-    #     print(f"The folder have both scans: {second_split_of_path}")
     third_part_of_path = second_split_of_path[1]
     # print(third_part_of_path)
 
