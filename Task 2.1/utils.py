@@ -19,23 +19,23 @@ CT(Grayscale) + PT(Color) = Overlap 2D img
 import SimpleITK as sitk
 import numpy as np
 
-def save_projections(image,img_name,max_intensity=50,min_intensity=-1024):
+def save_projections(image,img_name,max_intensity=np.double(50),min_intensity=np.double(-1024)):
     writer = sitk.ImageFileWriter()
     img=sitk.Extract(image, image.GetSize())
     writer.SetFileName(img_name)
 
     #img=make_isotropic(img)
-
+    
     img_write=sitk.Cast(
         sitk.IntensityWindowing(
-            img, windowMinimum=min_intensity, windowMaximum=max_intensity, outputMinimum=100.0, outputMaximum=255.0
+            img, windowMinimum=min_intensity, windowMaximum=max_intensity, outputMinimum=0.0, outputMaximum=100.0
         ),
         sitk.sitkUInt8,
-    )
+    ) #outputMinimum=100.0, outputMaximum=255.0
 
     writer.Execute(img_write)  #sitk.Cast(sitk.RescaleIntensity(img,outputMinimum=0,outputMaximum=15)
 
-def get_2D_projections(vol_img,ptype,angle,save_img=True,img_n=''):
+def get_2D_projections(vol_img,ptype,angle,save_img=True,img_n='', modality=''):
     projection = {'sum': sitk.SumProjection,
                 'mean':  sitk.MeanProjection,
                 'std': sitk.StandardDeviationProjection,
@@ -78,6 +78,12 @@ def get_2D_projections(vol_img,ptype,angle,save_img=True,img_n=''):
     maxtensity,mintensity=pix_array.max(),pix_array.min()
     #print(maxtensity,mintensity)
     
+    #initialize default HU unit based on modality
+    if modality == 'CT':
+        defHU = -20
+    else:
+        defHU = 0
+
     proj_images = []
     i=0
     for angle in rotation_angles:
@@ -89,7 +95,7 @@ def get_2D_projections(vol_img,ptype,angle,save_img=True,img_n=''):
                                         outputOrigin=min_bounds,
                                         outputSpacing=new_spc,
                                         outputDirection = [1,0,0,0,1,0,0,0,1],
-                                        defaultPixelValue =  -20, #HU unit for air in CT, possibly set to 0 in other cases
+                                        defaultPixelValue =  defHU, #HU unit for air in CT, possibly set to 0 in other cases
                                         outputPixelType = vol_img.GetPixelID())
         proj_image = projection[ptype](resampled_image, paxis)
         extract_size = list(proj_image.GetSize())
@@ -97,6 +103,8 @@ def get_2D_projections(vol_img,ptype,angle,save_img=True,img_n=''):
         proj_images.append(sitk.Extract(proj_image, extract_size))
         if save_img:
             img_name=img_n + r'_image_{0}.png'.format(i)
-            save_projections(sitk.InvertIntensity(sitk.Extract(proj_image, extract_size),maximum=1),img_name=img_name, max_intensity=maxtensity, min_intensity=mintensity)
+            save_projections(sitk.InvertIntensity(sitk.Extract(proj_image, extract_size), maximum=1),img_name=img_name, max_intensity=np.double(maxtensity), min_intensity=np.double(mintensity))
+            #save_projections(sitk.Extract(proj_image, extract_size),img_name=img_name, max_intensity=np.double(maxtensity), min_intensity=np.double(mintensity))
+            #save_projections(proj_image, img_name=img_name, max_intensity=np.double(maxtensity), min_intensity=np.double(mintensity))
             #print(i,angle)
         i+=1
