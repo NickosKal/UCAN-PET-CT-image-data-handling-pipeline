@@ -76,7 +76,7 @@ def get_2D_projections(vol_img,ptype,angle,save_img=True,img_n=''):
 
     pix_array=sitk.GetArrayFromImage(vol_img)
     maxtensity,mintensity=pix_array.max(),pix_array.min()
-    print(maxtensity,mintensity)
+    #print(maxtensity,mintensity)
     
     proj_images = []
     i=0
@@ -97,6 +97,6 @@ def get_2D_projections(vol_img,ptype,angle,save_img=True,img_n=''):
         proj_images.append(sitk.Extract(proj_image, extract_size))
         if save_img:
             img_name=img_n + r'_image_{0}.png'.format(i)
-            save_projections(sitk.InvertIntensity(sitk.Extract(proj_image, extract_size),maximum=1),img_name=img_name)
-            print(i,angle)
+            save_projections(sitk.InvertIntensity(sitk.Extract(proj_image, extract_size),maximum=1),img_name=img_name, max_intensity=maxtensity, min_intensity=mintensity)
+            #print(i,angle)
         i+=1
