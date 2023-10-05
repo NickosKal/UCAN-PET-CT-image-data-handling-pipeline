@@ -333,4 +333,5 @@ results = results.sort_values(by='Date', ascending=False)
 results.reset_index(drop=True, inplace=True)
 results = results.drop(columns='Date')
 display_full(results['PET-CT_info'])
+
 results.to_csv('non_code_related/Selected_exams_from_Raw_DCM_transf_date_20221205__06__n86_90GB.csv')
