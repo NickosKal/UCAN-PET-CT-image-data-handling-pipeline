@@ -81,14 +81,17 @@ def get_2D_projections(vol_img,modality,type,ptype,angle,save_img=True,img_n='')
         default_pix_val=0
         if type == 'Bone' or 'bone' or 'B':
             new_vol_img= sitk.Cast(vol_img > 200,vol_img.GetPixelID())
-            path= img_n + r'_{0}_image.nii'.format(modality + '_' + type)
-            save_as_gz(new_vol_img,path)
+            # path= img_n + r'_{0}_image.nii'.format(modality + '_' + type)
+            # save_as_gz(new_vol_img,path)
         elif type == 'Lean Tissue' or 'lean' or 'LT':
             new_vol_img= sitk.Cast(vol_img < 150 and vol_img > -29,vol_img.GetPixelID())
+    
         elif type == 'Adipose' or 'adipose' or 'AT':
             new_vol_img= sitk.Cast(vol_img < -30 and vol_img > -190,vol_img.GetPixelID())
+    
         elif type == 'Air' or 'A':
             new_vol_img= sitk.Cast(vol_img < -191,vol_img.GetPixelID())
+    
         elif type=='N':
             new_vol_img=vol_img
 
