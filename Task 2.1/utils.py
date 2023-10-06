@@ -19,6 +19,11 @@ CT(Grayscale) + PT(Color) = Overlap 2D img
 import SimpleITK as sitk
 import numpy as np
 
+def save_as_gz(vimg,path):
+    writer = sitk.ImageFileWriter()
+    writer.SetFileName(path)
+    writer.Execute(vimg)
+
 def save_projections(image,modality,img_name,max_intensity=50,min_intensity=-1024):
     writer = sitk.ImageFileWriter()
     img=sitk.Extract(image, image.GetSize())
@@ -75,17 +80,20 @@ def get_2D_projections(vol_img,modality,type,ptype,angle,save_img=True,img_n='')
     if modality == 'CT':
         default_pix_val=0
         if type == 'Bone' or 'bone' or 'B':
-            vol_img= vol_img > 200
+            new_vol_img= sitk.Cast(vol_img > 200,vol_img.GetPixelID())
+            path= img_n + r'_{0}_image.nii'.format(modality + '_' + type)
+            save_as_gz(new_vol_img,path)
         elif type == 'Lean Tissue' or 'lean' or 'LT':
-            vol_img= vol_img < 150 and vol_img > -29
+            new_vol_img= sitk.Cast(vol_img < 150 and vol_img > -29,vol_img.GetPixelID())
         elif type == 'Adipose' or 'adipose' or 'AT':
-            vol_img= vol_img < -30 and vol_img > -190
+            new_vol_img= sitk.Cast(vol_img < -30 and vol_img > -190,vol_img.GetPixelID())
         elif type == 'Air' or 'A':
-            vol_img= vol_img < -191
+            new_vol_img= sitk.Cast(vol_img < -191,vol_img.GetPixelID())
         elif type=='N':
-            pass
+            new_vol_img=vol_img
 
     elif modality == 'PET':
+        new_vol_img=vol_img
         default_pix_val=-50
         pass
     
@@ -106,7 +114,7 @@ def get_2D_projections(vol_img,modality,type,ptype,angle,save_img=True,img_n='')
 
     for angle in rotation_angles:
         rotation_transform.SetRotation(rotation_axis, angle) 
-        resampled_image = sitk.Resample(image1=vol_img,
+        resampled_image = sitk.Resample(image1=new_vol_img,
                                         size=new_sz,
                                         transform=rotation_transform,
                                         interpolator=sitk.sitkLinear,
