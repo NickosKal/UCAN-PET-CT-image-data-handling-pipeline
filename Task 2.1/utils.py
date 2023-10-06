@@ -23,8 +23,8 @@ def save_projections(image,modality,img_name,max_intensity=50,min_intensity=-102
     writer = sitk.ImageFileWriter()
     img=sitk.Extract(image, image.GetSize())
     writer.SetFileName(img_name)
-    if modality=="PET" or 'PT':
-        out_min=100.0
+    if modality=="CT":
+        out_min=0.0
         out_max=255.0
     else:
         out_min=0.0
@@ -82,6 +82,9 @@ def get_2D_projections(vol_img,modality,type,ptype,angle,save_img=True,img_n='')
             vol_img= vol_img < -30 and vol_img > -190
         elif type == 'Air' or 'A':
             vol_img= vol_img < -191
+        elif type=='N':
+            pass
+
     elif modality == 'PET':
         default_pix_val=-50
         pass
@@ -97,11 +100,6 @@ def get_2D_projections(vol_img,modality,type,ptype,angle,save_img=True,img_n='')
     maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
     #print(maxtensity,mintensity)
     
-    #initialize default HU unit based on modality
-    if modality == 'CT':
-        defHU = -20
-    else:
-        defHU = 0
 
     proj_images = []
     i=0
@@ -116,7 +114,6 @@ def get_2D_projections(vol_img,modality,type,ptype,angle,save_img=True,img_n='')
                                         outputSpacing=new_spc,
                                         outputDirection = [1,0,0,0,1,0,0,0,1],
                                         defaultPixelValue = default_pix_val, 
-                                        defaultPixelValue =  defHU, #HU unit for air in CT, possibly set to 0 in other cases
                                         outputPixelType = vol_img.GetPixelID())
         proj_image = projection[ptype](resampled_image, paxis)
         extract_size = list(proj_image.GetSize())
@@ -133,6 +130,6 @@ def get_2D_projections(vol_img,modality,type,ptype,angle,save_img=True,img_n='')
 
 #Testing
 # if __name__=="__main__":
-#     ct_img = sitk.ReadImage(r"C:\Users\Audit\Uppsala - Masters Europe\Semester 3\Project in Image analysis - Software\UCAN-PET-CT-image-data-handling-pipeline\Task 2.1\Data\CTbrain50.nrrd")
-
-#     print()
+    # v_img = sitk.ReadImage(r"C:\Users\Audit\Uppsala - Masters Europe\Semester 3\Project in Image analysis - Software\UCAN-PET-CT-image-data-handling-pipeline\Task 2.1\Data\CTbrain50.nrrd")
+    # save_path=r"C:\Users\Audit\Uppsala - Masters Europe\Semester 3\Project in Image analysis - Software\UCAN-PET-CT-image-data-handling-pipeline\Task 2.1\Data\Sample 2D projections\CTbrain50"
+    # get_2D_projections(v_img,'CT','LT','max',15,img_n=save_path)
