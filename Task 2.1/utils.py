@@ -37,9 +37,10 @@ def save_projections(image,modality,img_name,max_intensity=50,min_intensity=-102
     #img=make_isotropic(img)
     
     img_write=sitk.Cast(
-        sitk.IntensityWindowing(
-            img, windowMinimum=min_intensity, windowMaximum=max_intensity, outputMinimum=out_min, outputMaximum=out_max
-        ),
+        # sitk.IntensityWindowing(
+        #     img, windowMinimum=min_intensity, windowMaximum=max_intensity, outputMinimum=out_min, outputMaximum=out_max
+        # ),
+        sitk.RescaleIntensity(img,outputMinimum=out_min,outputMaximum=out_max),
         sitk.sitkUInt8,
     ) #outputMinimum=100.0, outputMaximum=255.0
 
@@ -52,7 +53,7 @@ def get_2D_projections(vol_img,modality,type,ptype,angle,save_img=True,img_n='')
                 'min': sitk.MinimumProjection,
                 'max': sitk.MaximumProjection}
     paxis = 0
-
+    
     rotation_axis = [0,0,1]
     rotation_angles = np.linspace(-1/2*np.pi, 1/2*np.pi, int(180.0/angle)) #15.0 degree 
     rotation_center = vol_img.TransformContinuousIndexToPhysicalPoint([(index-1)/2.0 for index in vol_img.GetSize()])
@@ -78,13 +79,13 @@ def get_2D_projections(vol_img,modality,type,ptype,angle,save_img=True,img_n='')
     max_bounds = all_points.max(0)
     
     if modality == 'CT':
-        default_pix_val=0
+        default_pix_val=20
         if type == 'Bone' or 'bone' or 'B':
             new_vol_img= sitk.Cast(vol_img > 200,vol_img.GetPixelID())
             # path= img_n + r'_{0}_image.nii'.format(modality + '_' + type)
             # save_as_gz(new_vol_img,path)
         elif type == 'Lean Tissue' or 'lean' or 'LT':
-            new_vol_img= sitk.Cast(vol_img < 150 and vol_img > -29,vol_img.GetPixelID())
+            new_vol_img= sitk.Cast(sitk.LabelOverlay(vol_img, (vol_img < 150 and vol_img > -29) ),vol_img.GetPixelID())
     
         elif type == 'Adipose' or 'adipose' or 'AT':
             new_vol_img= sitk.Cast(vol_img < -30 and vol_img > -190,vol_img.GetPixelID())
@@ -100,6 +101,10 @@ def get_2D_projections(vol_img,modality,type,ptype,angle,save_img=True,img_n='')
         default_pix_val=-50
         pass
     
+    path= img_n + r'_{0}_image.nii'.format(modality + '_' + type)
+    save_as_gz(new_vol_img,path)    
+
+
     #resampling grid will be isotropic so no matter which direction we project to
     #the images we save will always be isotropic (required for vol_img formats that 
     #assume isotropy - jpg,png,tiff...)
