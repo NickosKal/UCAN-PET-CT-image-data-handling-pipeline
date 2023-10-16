@@ -7,6 +7,7 @@ Task2.1/Data
 #file types
 
 *.csv
+*.xlsx
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
