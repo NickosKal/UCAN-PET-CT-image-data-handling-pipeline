@@ -4,6 +4,9 @@ Data
 Scratch
 Task2.1/Data
 
+#file types
+
+*.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

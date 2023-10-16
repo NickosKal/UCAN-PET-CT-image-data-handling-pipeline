@@ -18,7 +18,6 @@ random.seed(10)
 
 dicom.config.convert_wrong_length_to_UN = True
 
-source_path = r"G:\ucan_lymfom/"
 ###### Function responsible for displaying the full information of the dataframe
 def display_full(x):
     with pd.option_context("display.max_rows", None,
@@ -106,15 +105,22 @@ def outputDistortedImg(df):
 
 
 def data_filtering(dataframe_column):
+    # Create three lists one for CT and PET folders and one for both.
+    CT_selected_folders = defaultdict(list)
+    PET_selected_folders = defaultdict(list)
+    selected_exams = list()
+
     # Looping through the dataset
     for folder_path in dataframe_column:
         
         # Splitting the name of each row in order to take only the last part 
         # that contains the CT and PET info we care about.
-        first_split_of_path = folder_path.split("/")
-        second_part_of_path = first_split_of_path[1]
-        second_split_of_path = second_part_of_path.split("\\")
-        third_part_of_path = second_split_of_path[1]
+        #first_split_of_path = folder_path.split("/")
+        #second_part_of_path = first_split_of_path[1]
+        #second_split_of_path = second_part_of_path.split("\\")
+        #third_part_of_path = second_split_of_path[1]
+        first_split_of_path, second_part_of_path, third_part_of_path = folder_path.rsplit('/', 2)
+
         third_part_of_path = third_part_of_path.replace("_", "-")
         
         # Check if the folder has to do with CT or PET examination.
@@ -369,8 +375,10 @@ def data_filtering(dataframe_column):
                         selected_exams.append(folder_path)
                         PET_selected_folders[final_part_of_path[0]].append(final_part_of_path[1])
                         continue
+    return selected_exams
 
 if __name__ == '__main__':
+    source_path = r"E:/U-CAN-Lymfom_A/"
 
     ###### Set of rules that affect our exam selection
     ### Rules for CT
@@ -388,15 +396,61 @@ if __name__ == '__main__':
     PET_specifications_first_set = ["qcfx", "m.free"]
     PET_specifications_second_set = ["vpfx", "m.free"]
     PET_specifications_third_set = "vpfx"
+
     ###### Loading the dataset
+    print(str(datetime.now()), ": Reading through the directory tree")
     directory_list = list()
     for root, dirs, files in os.walk(source_path, topdown=False):
         for name in dirs:
             directory_list.append(os.path.join(root, name))
+            #print(os.path.join(root, name))
+            
+    remove_lst = ['PR----BONE-PULM-mm',
+    'PR----Lunga-0.6-ax-mm',
+    'PR----WB-Venfas-0.6-ax-mm',
+    'PR----LUNG-1.25-AX-mm',
+    'PR----WB-Ben-lunga-0.6-ax-mm',
+    'PR----WB-Venfas-3-ax-mm',
+    'PR----LUNG-1.25-AX-mm',
+    'PR----BONE-1.25-AX-mm',
+    'PR----LUNG-1.25-AX-mm',
+    'PR----Lunga-0.6-ax-mm',
+    'PR----SAVED-IMAGES-PR-mm',
+    'PR----e1-QCFX-S-400-Static-mm',
+    'PR----WB-Venfas-0.6-ax-mm',
+    'PR----WB-VEN-AX-mm',
+    'PR----WB-Ben-lunga-0.6-ax-mm',
+    'PR----LUNG-1.25-AX-mm',
+    'PR----THORAX-AX-mm',
+    'PR----LUNG-1.25-AX-mm',
+    'PR----THORAX-INANDAD-mm',
+    'PR----KEY_IMAGES-PR-mm',
+    'PR----SAVED-PR-mm',
+    'Examinations that miss either CT or PET or both',
+    'MR-',
+    'sag',
+    'cor',
+    'ot-'
+    ]
+
+    findir_lst = []
+    rejection_lst = []
+    for dir in directory_list:
+        dir = dir.replace('\\','/')
+        if len(dir.split('/'))>4 and 'Raw' in dir and  all(item.lower() not in dir.lower() for item in remove_lst):
+            print(dir)
+            findir_lst.append(dir)
+        else:
+            rejection_lst.append(dir)
+    
     ###### Creating a dataframe out of the dataset with the required information that are need to proceed with the filtering.
-    df = pd.DataFrame(directory_list, columns=['directory'])
-    df[['source_directory', 'patient_info']] = df['directory'].str.split(pat='/', n=1, expand=True)
-    df[['patient_directory', 'PET-CT_info']] = df['patient_info'].str.split(pat='\\', n=1, expand=True)
+    print(str(datetime.now()), ": Loading the directory into Dataframe")
+    df = pd.DataFrame(findir_lst, columns=['directory'])
+    #df = pd.DataFrame(directory_list, columns=['directory'])
+    display_full(df.head(1))
+    df[['source_directory', 'patient_directory', 'PET-CT_info']] = df['directory'].str.rsplit(pat='/', n=2, expand=True)
+    #df[['source_directory', 'patient_info']] = df['directory'].str.split(pat='/', n=1, expand=True)
+    #df[['patient_directory', 'PET-CT_info']] = df['patient_info'].str.split(pat='\\', n=1, expand=True)
     df[['system', 'npr', 'scan_date']] = df['patient_directory'].str.split(pat='_|-', n=2, expand=True)
     temp_df = df.groupby(['npr', 'scan_date']).apply(
         lambda x: True if x['PET-CT_info'].str.startswith('CT').any() and x['PET-CT_info'].str.startswith(
@@ -419,75 +473,85 @@ if __name__ == '__main__':
     final_df.reset_index(drop=True, inplace=True)
     final_df = final_df.drop(columns=['Has_QCFX', 'Has_Venfas', 'Has_VEN', 'Has_VENFAS',
                                     'Has_Standard', 'Has_Nativ', 'Resolutions'])
-    display_full(final_df['directory'])
+    display_full(final_df['directory'].head(5))
+    
     ###### Filtering the dataframe and selecting the desired exams for each patient.
-    # Create three lists one for CT and PET folders and one for both.
-    CT_selected_folders = defaultdict(list)
-    PET_selected_folders = defaultdict(list)
-    selected_exams = list()
-
-
-    print("Running the data filtering - initial run")
-    data_filtering(final_df["directory"])
+    print(str(datetime.now()), ": Running the data filtering - initial run")
+    selected_exams = data_filtering(final_df["directory"])
     selected_exams = pd.DataFrame(selected_exams, columns=["directory"])
-    print("Number of images: ", selected_exams.shape[0])
-
+    print(str(datetime.now()), ": Number of images: ", selected_exams.shape[0])
+    display_full(selected_exams.head(1))
+    
     logical    = False
     distorted_lst = []
     num_procs  = psutil.cpu_count(logical=logical)
     if len(sys.argv) > 1:
         num_procs = int(sys.argv[1])
-    print("Number of processes available: ", num_procs)
-
-    print("Splitting dataframe into ", num_procs-1, " dataframes")
-    splitted_df = np.array_split(selected_exams, num_procs-1)
+    print(str(datetime.now()), ": Number of processes available: ", num_procs)
+    
+    workers = num_procs-4
+    print(str(datetime.now()), ": Splitting dataframe into ", workers, " dataframes")
+    splitted_df = np.array_split(selected_exams, workers)
     start = time.time()
-    with concurrent.futures.ProcessPoolExecutor(max_workers=num_procs) as executor:
-        results = [ executor.submit(outputDistortedImg,df=df) for df in splitted_df ]
+    with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
+        results = [executor.submit(outputDistortedImg,df=df) for df in splitted_df]
         for result in concurrent.futures.as_completed(results):
             try:
-                distorted_lst.append(result.result())
+                distorted_lst.extend(result.result())
             except Exception as ex:
                 print(str(ex))
                 pass
     end = time.time()
 
-    print("Writing final distorted images lst")
-    with open(r'F:\U-CAN-Lymfom_A\Selected_for_UCAN_project\DistortedImageTest\distorted_lst.txt', 'w') as fp:
-        for item in distorted_lst:
-            # write each item on a new line
-            fp.write("%s\n" % item)
-        print('Done')
+    print(str(datetime.now()), ": Writing final distorted images lst")
+    try:
+        with open(r'E:/U-CAN-Lymfom_A/distorted_lst.txt', 'w') as fp:
+            for item in distorted_lst:
+                # write each item on a new line
+                fp.write("%s\n" % item)
+            print('Done')
+    except:
+        print(str(datetime.now()), ": Error while writing final distorted images lst")
 
     print("-------------------------------------------")
-    print("PPID %s Completed in %s"%(os.getpid(), round(end-start,2)))
+    print(str(datetime.now()), ": PPID %s Completed in %s"%(os.getpid(), round(end-start,2)/60))
 
 
 
     #distorted_lst = outputDistortedImg(selected_exams)
-    #distorted_lst[:2]
-
-    print("Writing final distorted images directories")
-    with open(r'G:\ucan_lymfom\distorted_imagedirs.txt', 'w') as fp:
+    print(str(datetime.now()), ": Distorted list: ", distorted_lst[:2])
+    """
+    print(str(datetime.now()), ": Writing final distorted images directories")
+    with open(r'E:/U-CAN-Lymfom_A/distorted_imagedirs.txt', 'w') as fp:
         for item in distorted_lst:
             # write each item on a new line
             fp.write("%s\n" % item)
         print('Done')
-    #filter distorted images from main dataframe
-    final_df1 = final_df[~final_df["directory"].isin(distorted_lst)].copy()
-    
-    selected_exams = list() #reset
-    data_filtering(final_df1["directory"])
+    """
 
+    #filter distorted images from main dataframe
+    print(str(datetime.now()), ": Removing distorted images from main dataframe")
+    final_df1 = final_df[~final_df["directory"].isin(distorted_lst)].copy()
+    print(str(datetime.now()), ": main dataframe shape: ", final_df1.shape)
+    display_full(final_df1.head(1))
+    
+    print(str(datetime.now()), ": Running data filtering - final")
+    #selected_exams = list() #reset
+    selected_exams = data_filtering(final_df1["directory"])
+    
     ###### Generate a dataframe with the selected examinations and saving it in the form of an excel file.
     # Sort the dataframe by starting from the newest examination and going to the oldest.
+    print(str(datetime.now()), ": Creating final dataframe having selected exams")
     selected_exams = pd.DataFrame(selected_exams, columns=["directory"])
-    selected_exams[["source_directory", "patient_info"]] = selected_exams['directory'].str.split(pat='/', n=1, expand=True)
-    selected_exams[['patient_directory', 'PET-CT_info']] = selected_exams['patient_info'].str.split(pat='\\', n=1, expand=True)
-    selected_exams.loc[:, 'Date'] = selected_exams['patient_info'].str.split("-").str[1]
+    display_full(selected_exams.head(1))
+    selected_exams[['source_directory', 'patient_directory', 'PET-CT_info']] = selected_exams['directory'].str.rsplit(pat='/', n=2, expand=True)
+    #selected_exams[["source_directory", "patient_info"]] = selected_exams['directory'].str.split(pat='/', n=1, expand=True)
+    #selected_exams[['patient_directory', 'PET-CT_info']] = selected_exams['patient_info'].str.split(pat='\\', n=1, expand=True)
+    #selected_exams.loc[:, 'Date'] = selected_exams['patient_info'].str.split("-").str[1]
+    selected_exams.loc[:, 'Date'] = selected_exams['patient_directory'].str.split("-").str[1]
     selected_exams = selected_exams.sort_values(by='Date', ascending=False)
     selected_exams.reset_index(drop=True, inplace=True)
     selected_exams = selected_exams.drop(columns='Date')
 
-    excel_file_location = r"G:\ucan_lymfom/Selected_exams.xlsx"
+    excel_file_location = r"E:/U-CAN-Lymfom_A/Selected_exams.xlsx"
     selected_exams.to_excel(excel_file_location)
