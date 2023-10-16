@@ -41,7 +41,7 @@ def save_projections(image,modality,img_name,max_intensity=50,min_intensity=-102
         #     img, windowMinimum=min_intensity, windowMaximum=max_intensity, outputMinimum=out_min, outputMaximum=out_max
         # ),
         sitk.RescaleIntensity(img,outputMinimum=out_min,outputMaximum=out_max),
-        sitk.sitkUInt8,
+        sitk.sitkUInt8
     ) #outputMinimum=100.0, outputMaximum=255.0
 
     writer.Execute(img_write)  #sitk.Cast(sitk.RescaleIntensity(img,outputMinimum=0,outputMaximum=15)
@@ -78,21 +78,23 @@ def get_2D_projections(vol_img,modality,type,ptype,angle,save_img=True,img_n='')
     min_bounds = all_points.min(0)
     max_bounds = all_points.max(0)
     
+    multiply= sitk.MultiplyImageFilter()
+
     if modality == 'CT':
         default_pix_val=20
         if type == 'Bone' or 'bone' or 'B':
-            new_vol_img= sitk.Cast(vol_img > 200,vol_img.GetPixelID())
+            new_vol_img= multiply.Execute(vol_img,vol_img > 200)
             # path= img_n + r'_{0}_image.nii'.format(modality + '_' + type)
             # save_as_gz(new_vol_img,path)
         elif type == 'Lean Tissue' or 'lean' or 'LT':
-            new_vol_img= sitk.Cast(sitk.LabelOverlay(vol_img, (vol_img < 150 and vol_img > -29) ),vol_img.GetPixelID())
-    
+            #new_vol_img= sitk.Cast(sitk.LabelOverlay(vol_img, (vol_img < 150 and vol_img > -29) ),vol_img.GetPixelID())
+            new_vol_img= multiply.Execute(vol_img,(vol_img < 150 and vol_img > -29))
         elif type == 'Adipose' or 'adipose' or 'AT':
-            new_vol_img= sitk.Cast(vol_img < -30 and vol_img > -190,vol_img.GetPixelID())
-    
+            #new_vol_img= sitk.Cast(vol_img < -30 and vol_img > -190,vol_img.GetPixelID())
+            new_vol_img= multiply.Execute(vol_img,(vol_img < -30 and vol_img > -190))
         elif type == 'Air' or 'A':
-            new_vol_img= sitk.Cast(vol_img < -191,vol_img.GetPixelID())
-    
+            #new_vol_img= sitk.Cast(vol_img < -191,vol_img.GetPixelID())
+            new_vol_img= multiply.Execute(vol_img,(vol_img < -191))
         elif type=='N':
             new_vol_img=vol_img
 
@@ -134,10 +136,10 @@ def get_2D_projections(vol_img,modality,type,ptype,angle,save_img=True,img_n='')
         proj_image = projection[ptype](resampled_image, paxis)
         extract_size = list(proj_image.GetSize())
         extract_size[paxis]=0
-        proj_images.append(sitk.Extract(proj_image, extract_size))
+        proj_images.append(proj_image) #sitk.Extract(proj_image, extract_size)
         if save_img:
             imgname= img_n + r'_{0}_image_{1}.png'.format(modality + '_' + type,i)
-            save_projections(sitk.InvertIntensity(sitk.Extract(proj_image, extract_size),maximum=1), modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
+            save_projections(sitk.InvertIntensity(proj_image,maximum=1), modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
 
             #save_projections(sitk.Extract(proj_image, extract_size),img_name=img_name, max_intensity=np.double(maxtensity), min_intensity=np.double(mintensity))
             #save_projections(proj_image, img_name=img_name, max_intensity=np.double(maxtensity), min_intensity=np.double(mintensity))
