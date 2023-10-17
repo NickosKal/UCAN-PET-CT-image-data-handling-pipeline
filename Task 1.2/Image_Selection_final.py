@@ -18,9 +18,9 @@ dicom.config.convert_wrong_length_to_UN = True
 
 # Global path variables
 source_path = "/media/andres/T7 Shield/ucan_lymfom"
-incomplete_folders_path = os.path.join(source_path, '/ucan_lymfom/No_PTorCT_exams_from_U-CAN-Lymfom.xlsx')
-final_selected_folders = os.path.join(source_path, "/FinalSelected_exams_from_U-CAN-Lymfom.xlsx")
-list_of_distorted_images = os.path.join(source_path, '/distorted_lst.txt')
+incomplete_folders_path = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom.xlsx')
+final_selected_folders = os.path.join(source_path, "FinalSelected_exams_from_U-CAN-Lymfom.xlsx")
+list_of_distorted_images = os.path.join(source_path, 'distorted_lst.txt')
 
 
 # Function responsible for displaying the full information of the dataframe
@@ -315,6 +315,7 @@ def finalPETCT(img_lst):
 
 
 if __name__ == '__main__':
+    start = time.time()
     # Set of rules that affect our exam selection
     # Rules for CT
     CT_ignore_folders = ["bone", "lung", "lunga"]
@@ -369,14 +370,14 @@ if __name__ == '__main__':
                    'cor',
                    'ot-'
                    ]
-    keep_list = ["CT", "PT"]
+    keep_list = ["CT-", "PT-"]
 
     findir_lst = []
     rejection_lst = []
 
     for dir in directory_list:
         dir = dir.replace('\\', '/')
-        if any(item.lower() not in dir.lower() for item in keep_list) and all(
+        if any(item.lower() in dir.lower() for item in keep_list) and all(
                 item.lower() not in dir.lower() for item in remove_list):
             print(dir)
             findir_lst.append(dir)
@@ -497,3 +498,5 @@ if __name__ == '__main__':
 
     final_results = final_results[final_results["PET-CT_info"].isin(list(np.ravel(temp_df[0].to_list())))]
     final_results.to_excel(final_selected_folders)
+    finish = time.time()
+    print(f"Total time of running: {finish - start}")
