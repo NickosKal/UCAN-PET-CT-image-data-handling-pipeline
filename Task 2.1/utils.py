@@ -19,14 +19,28 @@ CT(Grayscale) + PT(Color) = Overlap 2D img
 import SimpleITK as sitk
 import numpy as np
 
+
+'''
+
+Function to save the 3d simpleitk objects to disk(deprecated)
+
+'''
+
 def save_as_gz(vimg,path):
     writer = sitk.ImageFileWriter()
     writer.SetFileName(path)
     writer.Execute(vimg)
 
+
+'''
+
+Function to save 2d simpleitk projection objects as uint8 png images
+
+'''
+
 def save_projections(image,modality,img_name,max_intensity=50,min_intensity=-1024):
     writer = sitk.ImageFileWriter()
-    img=sitk.Extract(image, image.GetSize())
+    #img=sitk.Extract(image, image.GetSize())
     writer.SetFileName(img_name)
     if modality=="CT":
         out_min=0.0
@@ -35,52 +49,63 @@ def save_projections(image,modality,img_name,max_intensity=50,min_intensity=-102
         out_min=0.0
         out_max=15.0
     #img=make_isotropic(img)
-    
+
     img_write=sitk.Cast(
         # sitk.IntensityWindowing(
         #     img, windowMinimum=min_intensity, windowMaximum=max_intensity, outputMinimum=out_min, outputMaximum=out_max
         # ),
-        sitk.RescaleIntensity(img,outputMinimum=out_min,outputMaximum=out_max),
+        sitk.RescaleIntensity(image), #,outputMinimum=out_min,outputMaximum=out_max
         sitk.sitkUInt8
     ) #outputMinimum=100.0, outputMaximum=255.0
 
     writer.Execute(img_write)  #sitk.Cast(sitk.RescaleIntensity(img,outputMinimum=0,outputMaximum=15)
 
-def get_proj_after_mask(img,hu_type):
+'''
+
+Function to get 3D masks for CT scans to segment out the exact tissue type.
+
+'''
+
+def get_proj_after_mask(img,max_i,min_i,hu_type):
     multiply= sitk.MultiplyImageFilter()
     if hu_type == 'Bone' or hu_type == 'bone' or hu_type == 'B':
-        op_img= multiply.Execute(img,sitk.Cast(img > 200,img.GetPixelID()))
+        seg = sitk.BinaryThreshold(
+        img, lowerThreshold=200, upperThreshold=max_i,insideValue=1, outsideValue=0
+        )
+        op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
         # path= img_n + r'_{0}_image.nii'.format(modality + '_' + type)
         # save_as_gz(op_img,path)
     elif hu_type == 'Lean Tissue' or hu_type == 'lean' or hu_type == 'LT':
-        print(hu_type)
         seg = sitk.BinaryThreshold(
         img, lowerThreshold=-29, upperThreshold=150, insideValue=1, outsideValue=0
         )
-        #op_img= sitk.Cast(sitk.LabelOverlay(img, (img < 150 and img > -29) ),img.GetPixelID())
-        #op_img= multiply.Execute(img,sitk.Cast(img < 150 and img > -29, img.GetPixelID()))
         op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
-        print(op_img.GetSize(),seg.GetSize())
 
     elif hu_type == 'Adipose' or hu_type == 'adipose' or hu_type == 'AT':
-        #op_img= sitk.Cast(img < -30 and img > -190,img.GetPixelID())
-        op_img= multiply.Execute(img,(img < -30 and img > -190))
+        seg = sitk.BinaryThreshold(
+        img, lowerThreshold=-199, upperThreshold=-30, insideValue=1, outsideValue=0
+        )
+        op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
+        
     elif hu_type == 'Air' or hu_type == 'A':
-        #op_img= sitk.Cast(img < -191,img.GetPixelID())
-        op_img= multiply.Execute(img,(img < -191))
+        seg = sitk.BinaryThreshold(
+        img, lowerThreshold=min_i, upperThreshold=-191, insideValue=1, outsideValue=0
+        )
+        op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
+    
     elif hu_type=='N':
         op_img=img
+    
     return op_img
 
 
-def get_2D_projections(vol_img,modality,t_type,ptype,angle,save_img=True,img_n=''):
+def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img_n=''):
     projection = {'sum': sitk.SumProjection,
                 'mean':  sitk.MeanProjection,
                 'std': sitk.StandardDeviationProjection,
                 'min': sitk.MinimumProjection,
                 'max': sitk.MaximumProjection}
     paxis = 0
-    print(vol_img.GetSize())
     rotation_axis = [0,0,1]
     rotation_angles = np.linspace(-1/2*np.pi, 1/2*np.pi, int(180.0/angle)) #15.0 degree 
     rotation_center = vol_img.TransformContinuousIndexToPhysicalPoint([(index-1)/2.0 for index in vol_img.GetSize()])
@@ -105,16 +130,8 @@ def get_2D_projections(vol_img,modality,t_type,ptype,angle,save_img=True,img_n='
     min_bounds = all_points.min(0)
     max_bounds = all_points.max(0)
     
-    if modality == 'CT':
-        default_pix_val=20
-
-
-    elif modality == 'PET':
-        default_pix_val=-50
-        pass
-    
     #path= img_n + r'_{0}_image.nii'.format(modality + '_' + t_type)
-    #save_as_gz(new_vol_img,path)    
+    #save_as_gz(new_vol_img,path)       
 
 
     #resampling grid will be isotropic so no matter which direction we project to
@@ -123,12 +140,38 @@ def get_2D_projections(vol_img,modality,t_type,ptype,angle,save_img=True,img_n='
 
     new_spc = [np.min(vol_img.GetSpacing())]*3
     new_sz = [int(sz/spc + 0.5) for spc,sz in zip(new_spc, max_bounds-min_bounds)]
-    print(new_spc)
-    print(new_sz)
-    pix_array=sitk.GetArrayFromImage(vol_img)
-    maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
-    #print(maxtensity,mintensity)
     
+    if modality == 'CT':
+        default_pix_val=20
+
+
+    elif modality == 'PET':
+        default_pix_val=20
+        #clipping intensities
+
+        # intensity_fil=sitk.IntensityWindowingImageFilter()
+        # intensity_fil.SetWindowMaximum=maxtensity
+        # intensity_fil.SetWindowMinimum=mintensity
+        # intensity_fil.SetOutputMaximum=50000
+        # intensity_fil.SetOutputMinimum=0
+        # vol_img= intensity_fil.Execute(vol_img)
+
+        pix_array=sitk.GetArrayFromImage(vol_img)
+        maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
+        print(maxtensity,mintensity)
+        vol_img = sitk.Cast(    
+        sitk.IntensityWindowing(
+            vol_img, windowMinimum=mintensity, windowMaximum=maxtensity, outputMinimum=0.0, outputMaximum=1500.0
+        ),
+        vol_img.GetPixelID(),
+        )
+
+        # print('After clipping:')
+        # pix_array=sitk.GetArrayFromImage(vol_img)
+        # maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
+        # print(maxtensity,mintensity)
+
+
     proj_images = []
     i=0
 
@@ -143,17 +186,23 @@ def get_2D_projections(vol_img,modality,t_type,ptype,angle,save_img=True,img_n='
                                         outputDirection = [1,0,0,0,1,0,0,0,1],
                                         defaultPixelValue = default_pix_val, 
                                         outputPixelType = vol_img.GetPixelID())
-        proj_image = get_proj_after_mask(projection[ptype](resampled_image, paxis), t_type) 
+        if modality=='CT':
+            masked_resampled_image=get_proj_after_mask(resampled_image,maxtensity,mintensity,t_type)
+        else:
+            masked_resampled_image=resampled_image
+
+        proj_image = projection[ptype](masked_resampled_image, paxis)
         extract_size = list(proj_image.GetSize())
-        extract_size[paxis]=0
-        proj_images.append(proj_image) #sitk.Extract(proj_image, extract_size)
+        extract_size[paxis]=0 
+        axes_shifted_pi=sitk.Extract(proj_image, extract_size) #flip axes
+        proj_images.append(axes_shifted_pi) #sitk.Extract(proj_image, extract_size)
+
+        #print('Size before saving: ',sitk.Extract(proj_image, extract_size).GetSize())
+        
         if save_img:
             imgname= img_n + r'_{0}_image_{1}.png'.format(modality + '_' + t_type,i)
-            save_projections(sitk.InvertIntensity(proj_image,maximum=1), modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
-
-            #save_projections(sitk.Extract(proj_image, extract_size),img_name=img_name, max_intensity=np.double(maxtensity), min_intensity=np.double(mintensity))
-            #save_projections(proj_image, img_name=img_name, max_intensity=np.double(maxtensity), min_intensity=np.double(mintensity))
-            #print(i,angle)
+            save_projections(sitk.InvertIntensity(axes_shifted_pi,maximum=1), modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
+            #save_projections(axes_shifted_pi, modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
         i+=1
 
 #Testing
