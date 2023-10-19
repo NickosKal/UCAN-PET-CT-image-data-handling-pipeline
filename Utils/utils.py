@@ -183,7 +183,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
 
 
     elif modality == 'PET':
-        default_pix_val=20
+        default_pix_val=0
 
         #clipping intensities
 
@@ -199,7 +199,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
         print(maxtensity,mintensity)
         vol_img = sitk.Cast(    
         sitk.IntensityWindowing(
-            vol_img, windowMinimum=mintensity, windowMaximum=maxtensity, outputMinimum=500.0, outputMaximum=1500.0
+            vol_img, windowMinimum=mintensity, windowMaximum=maxtensity, outputMinimum=0.0, outputMaximum=1500.0
         ),
         vol_img.GetPixelID(),
         )
@@ -210,7 +210,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
         # print(maxtensity,mintensity)
 
     elif modality == 'SUV':
-        default_pix_val=20
+        default_pix_val=0
 
         #clipping intensities
 
@@ -226,7 +226,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
         print(maxtensity,mintensity)
         vol_img = sitk.Cast(    
         sitk.IntensityWindowing(
-            vol_img, windowMinimum=mintensity, windowMaximum=maxtensity, outputMinimum=500.0, outputMaximum=1500.0
+            vol_img, windowMinimum=mintensity, windowMaximum=maxtensity, outputMinimum=0.0, outputMaximum=1500.0
         ),
         vol_img.GetPixelID(),
         )
