@@ -18,6 +18,8 @@ dicom.config.convert_wrong_length_to_UN = True
 
 # Global path variables
 source_path = "/media/andres/T7 Shield/ucan_lymfom"
+#source_path = "E:/U-CAN-Lymfom_A"
+
 incomplete_folders_path = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom.xlsx')
 final_selected_folders = os.path.join(source_path, "FinalSelected_exams_from_U-CAN-Lymfom.xlsx")
 list_of_distorted_images = os.path.join(source_path, 'distorted_lst.txt')
@@ -386,7 +388,7 @@ if __name__ == '__main__':
 
     # Creating a dataframe out of the dataset with the required information that are need to proceed with the filtering.
     print(str(datetime.now()), ": Loading the directory into Dataframe")
-    df = pd.DataFrame(directory_list, columns=['directory'])
+    df = pd.DataFrame(findir_lst, columns=['directory'])
     display_full(df.head(1))
     df[['source_directory', 'patient_directory', 'PET-CT_info']] = df['directory'].str.rsplit(pat='/', n=2, expand=True)
 
@@ -499,4 +501,4 @@ if __name__ == '__main__':
     final_results = final_results[final_results["PET-CT_info"].isin(list(np.ravel(temp_df[0].to_list())))]
     final_results.to_excel(final_selected_folders)
     finish = time.time()
-    print(f"Total time of running: {finish - start}")
+    print(f"Total time of running: {round(finish - start, 2)/60}")
