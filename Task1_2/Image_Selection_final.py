@@ -18,7 +18,8 @@ dicom.config.convert_wrong_length_to_UN = True
 
 # Global path variables
 #source_path = "/media/andres/T7 Shield/ucan_lymfom"
-source_path = "F:/ucan_lymfom"
+source_path = "/media/andres/T7 Shield/U-CAN-Lymfom_A"
+#source_path = "F:/ucan_lymfom"
 
 rejected_folder_path = os.path.join(source_path, 'Rejected_exams_from_U-CAN-Lymfom.xlsx')
 incomplete_folders_path1 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom1.xlsx')
@@ -407,16 +408,22 @@ if __name__ == '__main__':
     temp_df = df.groupby(['npr', 'scan_date']).apply(
         lambda x: True if x['PET-CT_info'].str.startswith('CT').any() and x['PET-CT_info'].str.startswith(
             'PT').any() else False).reset_index()
-    
+    display_full(temp_df['directory'].head(2))
+
     # incomplete folders
     print(str(datetime.now()), ': Writing incomplete folders dataframe to excel')
-    temp_df1 = temp_df[temp_df['0' == False]].copy()
+    temp_df1 = temp_df[temp_df['0'] == False].copy()
+    print(str(datetime.now()), ': incomplete df shape: ', temp_df1.shape)
+    display_full(temp_df1['directory'].head(2))
     incomplete_df = pd.merge(temp_df1, df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
     incomplete_df.to_excel(incomplete_folders_path1)
     
+    
     # complete folders
     print(str(datetime.now()), ': Filtering complete folders dataframe to continue execution')
-    temp_df2 = temp_df[temp_df['0' == True]].copy()
+    temp_df2 = temp_df[temp_df['0'] == True].copy()
+    print(str(datetime.now()), ': complete df shape: ', temp_df2.shape)
+    display_full(temp_df2['directory'].head(2))
     new_df = pd.merge(temp_df2, df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
     print(str(datetime.now()), ': Shape before dropping na value: ', new_df.shape)
     pre_sorted_df = new_df.dropna()
