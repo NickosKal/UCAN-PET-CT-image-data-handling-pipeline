@@ -17,13 +17,16 @@ import random
 dicom.config.convert_wrong_length_to_UN = True
 
 # Global path variables
-source_path = "/media/andres/T7 Shield/ucan_lymfom"
-#source_path = "E:/U-CAN-Lymfom_A"
+#source_path = "/media/andres/T7 Shield/ucan_lymfom"
+source_path = "F:/ucan_lymfom"
 
-incomplete_folders_path = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom.xlsx')
+rejected_folder_path = os.path.join(source_path, 'Rejected_exams_from_U-CAN-Lymfom.xlsx')
+incomplete_folders_path1 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom1.xlsx')
+incomplete_folders_path2 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom2.xlsx')
+selected_folders_beforefiltering = os.path.join(source_path, 'Selected_exams_beforefiltering_from_U-CAN-Lymfom.xlsx')
+selected_folders_afterfiltering = os.path.join(source_path, 'Selected_exams_afterfiltering_from_U-CAN-Lymfom.xlsx')
 final_selected_folders = os.path.join(source_path, "FinalSelected_exams_from_U-CAN-Lymfom.xlsx")
-list_of_distorted_images = os.path.join(source_path, 'distorted_lst.txt')
-
+list_of_distorted_images = os.path.join(source_path, 'Distorted_exams_from_U-CAN-Lymfom.xlsx')
 
 # Function responsible for displaying the full information of the dataframe
 def display_full(x):
@@ -385,6 +388,10 @@ if __name__ == '__main__':
             findir_lst.append(dir)
         else:
             rejection_lst.append(dir)
+    
+    print(str(datetime.now()), ': Writing rejected image folders to excel file')
+    rejected_df = pd.DataFrame(rejection_lst, columns=['directory'])
+    rejected_df.to_excel(rejected_folder_path)
 
     # Creating a dataframe out of the dataset with the required information that are need to proceed with the filtering.
     print(str(datetime.now()), ": Loading the directory into Dataframe")
@@ -400,9 +407,20 @@ if __name__ == '__main__':
     temp_df = df.groupby(['npr', 'scan_date']).apply(
         lambda x: True if x['PET-CT_info'].str.startswith('CT').any() and x['PET-CT_info'].str.startswith(
             'PT').any() else False).reset_index()
-    temp_df = temp_df[temp_df['0' == True]]
-    new_df = pd.merge(temp_df, df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
+    
+    # incomplete folders
+    print(str(datetime.now()), ': Writing incomplete folders dataframe to excel')
+    temp_df1 = temp_df[temp_df['0' == False]].copy()
+    incomplete_df = pd.merge(temp_df1, df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
+    incomplete_df.to_excel(incomplete_folders_path1)
+    
+    # complete folders
+    print(str(datetime.now()), ': Filtering complete folders dataframe to continue execution')
+    temp_df2 = temp_df[temp_df['0' == True]].copy()
+    new_df = pd.merge(temp_df2, df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
+    print(str(datetime.now()), ': Shape before dropping na value: ', new_df.shape)
     pre_sorted_df = new_df.dropna()
+    print(str(datetime.now()), ': Shape before dropping na value: ', pre_sorted_df.shape)
 
     # Sort the dataset according to the rules we have in order for the most desired exams to be at the top.
     pre_sorted_df.loc[:, 'Resolutions'] = pre_sorted_df.loc[:, 'PET-CT_info'].str.split('-').str[-1].str.extract(
@@ -420,11 +438,20 @@ if __name__ == '__main__':
     final_df = final_df.drop(columns=['Has_QCFX', 'Has_Venfas', 'Has_VEN', 'Has_VENFAS',
                                       'Has_Standard', 'Has_Nativ', 'Resolutions'])
     display_full(final_df['directory'].head(5))
+    
+    # Writing the dataframe before running data filtering for selection of CT/PET images
+    print(str(datetime.now()), ": Writing the dataframe before running data filtering for selection of CT/PET images")
+    final_df.to_excel(selected_folders_beforefiltering)
 
     # Filtering the dataframe and selecting the desired exams for each patient.
     print(str(datetime.now()), ": Running the data filtering - initial run")
     selected_exams = data_filtering(final_df["directory"])
     selected_exams = pd.DataFrame(selected_exams, columns=["directory"])
+
+    # Writing the dataframe after running first data filtering for selection of CT/PET images
+    print(str(datetime.now()), ": Writing the dataframe after running data filtering for selection of CT/PET images")
+    selected_exams.to_excel(selected_folders_afterfiltering)
+
     print(str(datetime.now()), ": Number of images: ", selected_exams.shape[0])
     display_full(selected_exams.head(1))
 
@@ -449,15 +476,12 @@ if __name__ == '__main__':
                 pass
     end = time.time()
 
-    print(str(datetime.now()), ": Writing final distorted images lst")
+    print(str(datetime.now()), ": Writing final distorted images folders to excel file")
     try:
-        with open(list_of_distorted_images, 'w') as fp:
-            for item in distorted_lst:
-                # write each item on a new line
-                fp.write("%s\n" % item)
-            print('Done')
+        distorted_df = pd.DataFrame(distorted_lst, columns=['directory'])
+        distorted_df.to_excel(list_of_distorted_images)
     except:
-        print(str(datetime.now()), ": Error while writing final distorted images lst")
+        print(str(datetime.now()), ": Error while writing final distorted images folders to excel file")
 
     print("-------------------------------------------")
     print(str(datetime.now()), ": PPID %s Completed in %s" % (os.getpid(), round(end - start, 2) / 60))
@@ -491,7 +515,7 @@ if __name__ == '__main__':
             "PT-").any() else False).reset_index()
     No_PTorCT_Patlst = No_PTorCT_agg[No_PTorCT_agg[0] == False]['patient_directory'].to_list()
     No_PTorCT_df = selected_exams[selected_exams["patient_directory"].isin(No_PTorCT_Patlst)]
-    No_PTorCT_df.to_excel(incomplete_folders_path)
+    No_PTorCT_df.to_excel(incomplete_folders_path2)
     print("No_PTorCT_df.shape: ", No_PTorCT_df.shape)
 
     final_results = selected_exams[~selected_exams["patient_directory"].isin(No_PTorCT_Patlst)]

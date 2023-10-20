@@ -4,18 +4,16 @@ import sys
 
 import SimpleITK as sitk
 import numpy as np
+from datetime import datetime
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 def read_config():
     #print(dir_path)
     with open(dir_path + "/config.yaml","r") as file_object:
-        #config=yaml.load(file_object,Loader=yaml.SafeLoader)
+        config=yaml.load(file_object,Loader=yaml.SafeLoader)
         #print(config)
-        config_generator_obj= list(yaml.load_all(file_object,Loader=yaml.SafeLoader))
-        #for data in config_generator_obj:
-            #print(data)
-    return config_generator_obj
+    return config
 
 #read_config()
 """
@@ -199,7 +197,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
         print(maxtensity,mintensity)
         vol_img = sitk.Cast(    
         sitk.IntensityWindowing(
-            vol_img, windowMinimum=mintensity, windowMaximum=maxtensity, outputMinimum=0.0, outputMaximum=1500.0
+            vol_img, windowMinimum=mintensity, windowMaximum=maxtensity, outputMinimum=0.0, outputMaximum=15.0
         ),
         vol_img.GetPixelID(),
         )
@@ -226,7 +224,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
         print(maxtensity,mintensity)
         vol_img = sitk.Cast(    
         sitk.IntensityWindowing(
-            vol_img, windowMinimum=mintensity, windowMaximum=maxtensity, outputMinimum=0.0, outputMaximum=1500.0
+            vol_img, windowMinimum=mintensity, windowMaximum=maxtensity, outputMinimum=0.0, outputMaximum=2.0
         ),
         vol_img.GetPixelID(),
         )
