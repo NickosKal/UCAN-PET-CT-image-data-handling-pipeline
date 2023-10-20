@@ -22,6 +22,7 @@ source_path = "/media/andres/T7 Shield/U-CAN-Lymfom_A"
 #source_path = "F:/ucan_lymfom"
 
 rejected_folder_path = os.path.join(source_path, 'Rejected_exams_from_U-CAN-Lymfom.xlsx')
+sourcefiltered_folder_path = os.path.join(source_path, 'SourceFiltered_exams_from_U-CAN-Lymfom.xlsx')
 incomplete_folders_path1 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom1.xlsx')
 incomplete_folders_path2 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom2.xlsx')
 selected_folders_beforefiltering = os.path.join(source_path, 'Selected_exams_beforefiltering_from_U-CAN-Lymfom.xlsx')
@@ -397,6 +398,10 @@ if __name__ == '__main__':
     # Creating a dataframe out of the dataset with the required information that are need to proceed with the filtering.
     print(str(datetime.now()), ": Loading the directory into Dataframe")
     df = pd.DataFrame(findir_lst, columns=['directory'])
+     
+    print(str(datetime.now()), ': Writing source filtered image folders to excel file')
+    df.to_excel(sourcefiltered_folder_path)
+
     display_full(df.head(1))
     df[['source_directory', 'patient_directory', 'PET-CT_info']] = df['directory'].str.rsplit(pat='/', n=2, expand=True)
 
