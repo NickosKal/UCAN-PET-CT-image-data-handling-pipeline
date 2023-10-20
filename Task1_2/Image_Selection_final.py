@@ -419,7 +419,7 @@ if __name__ == '__main__':
     print(str(datetime.now()), ': Writing incomplete folders dataframe to excel')
     temp_df1 = temp_df[temp_df[0] == False].copy()
     print(str(datetime.now()), ': incomplete df shape: ', temp_df1.shape)
-    display_full(temp_df1['directory'].head(2))
+    display_full(temp_df1.head(2))
     incomplete_df = pd.merge(temp_df1, df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
     incomplete_df.to_excel(incomplete_folders_path1)
     
