@@ -1,0 +1,33 @@
+---
+# Common config variables
+common:
+    paths:
+        source_path_wd : 'E:/U-CAN-Lymfom_A' #'/media/andres/T7 Shield1/U-CAN-Lymfom_A'
+        source_path_bd : 'F:/ucan_lymfom' #'/media/andres/T7 Shield/ucan_lymfom'
+
+# Selection script config variables
+selection:
+    filenames:
+        incomplete_folders_filename : 'No_PTorCT_exams_from_U-CAN-Lymfom.xlsx'
+        final_selected_images_filename : 'FinalSelected_exams_from_U-CAN-Lymfom.xlsx'
+        list_of_distorted_images_filename : 'distorted_lst.txt'
+
+# Metadata extraction config variables
+metadata:
+    filenames:
+        final_selected_images_filename : 'Finalized_dataset.xlsx'
+
+# Resampling Task config variables
+resampling:
+    voxel_spacing : [2,2,3]
+    image_size : [256,256,384]
+
+# Projection config variables
+projections:
+    paths:
+        destination_path : 'Selected_for_UCAN_project/2dprojections' 
+    variables:
+        modality : ['CT', 'PET', 'SUV']
+        tissue_type : ['LT', 'AT', 'LT' , 'B' , 'N']
+        projection_type : ['sum', 'min', 'max', 'mean', 'std']
+...
