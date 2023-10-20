@@ -8,9 +8,14 @@ common:
 # Selection script config variables
 selection:
     filenames:
-        incomplete_folders_filename : 'No_PTorCT_exams_from_U-CAN-Lymfom.xlsx'
+        rejected_folder_filename : 'Rejected_exams_from_U-CAN-Lymfom.xlsx'
+        sourcefiltered_folder_filename : 'SourceFiltered_exams_from_U-CAN-Lymfom.xlsx'
+        incomplete_folders_filename_initial : 'No_PTorCT_exams_from_U-CAN-Lymfom1.xlsx'
+        incomplete_folders_filename_final : 'No_PTorCT_exams_from_U-CAN-Lymfom2.xlsx'
+        selected_folders_beforefiltering_filename : 'Selected_exams_beforefiltering_from_U-CAN-Lymfom.xlsx'
+        selected_folders_afterfiltering_filename : 'Selected_exams_afterfiltering_from_U-CAN-Lymfom.xlsx'
         final_selected_images_filename : 'FinalSelected_exams_from_U-CAN-Lymfom.xlsx'
-        list_of_distorted_images_filename : 'distorted_lst.txt'
+        list_of_distorted_images_filename : 'Distorted_exams_from_U-CAN-Lymfom.xlsx'
 
 # Metadata extraction config variables
 metadata:
