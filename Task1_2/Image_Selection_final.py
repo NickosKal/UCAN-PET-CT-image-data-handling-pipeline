@@ -413,7 +413,7 @@ if __name__ == '__main__':
     temp_df = df.groupby(['npr', 'scan_date']).apply(
         lambda x: True if x['PET-CT_info'].str.startswith('CT').any() and x['PET-CT_info'].str.startswith(
             'PT').any() else False).reset_index()
-    display_full(temp_df['directory'].head(2))
+    display_full(temp_df.head(2))
 
     # incomplete folders
     print(str(datetime.now()), ': Writing incomplete folders dataframe to excel')
@@ -428,7 +428,7 @@ if __name__ == '__main__':
     print(str(datetime.now()), ': Filtering complete folders dataframe to continue execution')
     temp_df2 = temp_df[temp_df['0'] == True].copy()
     print(str(datetime.now()), ': complete df shape: ', temp_df2.shape)
-    display_full(temp_df2['directory'].head(2))
+    display_full(temp_df2.head(2))
     new_df = pd.merge(temp_df2, df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
     print(str(datetime.now()), ': Shape before dropping na value: ', new_df.shape)
     pre_sorted_df = new_df.dropna()
