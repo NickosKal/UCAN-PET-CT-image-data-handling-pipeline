@@ -25,7 +25,14 @@ import numpy as np
 Function to save the 3d simpleitk objects to disk(deprecated)
 
 '''
-
+def display_full(x):
+    with pd.option_context("display.max_rows", None,
+                           "display.max_columns", None,
+                           "display.width", 20000,
+                           "display.max_colwidth", None,
+                           ):
+        print(x)
+        
 def save_as_gz(vimg,path):
     writer = sitk.ImageFileWriter()
     writer.SetFileName(path)
