@@ -27,8 +27,11 @@ incomplete_folders_path1 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN
 incomplete_folders_path2 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom2.xlsx')
 selected_folders_beforefiltering = os.path.join(source_path, 'Selected_exams_beforefiltering_from_U-CAN-Lymfom.xlsx')
 selected_folders_afterfiltering = os.path.join(source_path, 'Selected_exams_afterfiltering_from_U-CAN-Lymfom.xlsx')
+selected_folders_beforesecondfiltering = os.path.join(source_path, 'Selected_exams_beforesecondfiltering_from_U-CAN-Lymfom.xlsx')
+selected_folders_aftersecondfiltering = os.path.join(source_path, 'Selected_exams_aftersecondfiltering_from_U-CAN-Lymfom.xlsx')
 final_selected_folders = os.path.join(source_path, "FinalSelected_exams_from_U-CAN-Lymfom.xlsx")
 list_of_distorted_images = os.path.join(source_path, 'Distorted_exams_from_U-CAN-Lymfom.xlsx')
+
 
 # Function responsible for displaying the full information of the dataframe
 def display_full(x):
@@ -505,8 +508,16 @@ if __name__ == '__main__':
     print(str(datetime.now()), ": main dataframe shape: ", final_df1.shape)
     display_full(final_df1.head(1))
 
+    # Writing the dataframe before running data filtering for second selection of CT/PET images
+    print(str(datetime.now()), ": Writing the dataframe before running data filtering for second selection of CT/PET images")
+    final_df.to_excel(selected_folders_beforesecondfiltering)
+
     print(str(datetime.now()), ": Running data filtering - final")
     selected_exams = data_filtering(final_df1["directory"])
+
+    # Writing the dataframe after running data filtering for second selection of CT/PET images
+    print(str(datetime.now()), ": Writing the dataframe after running data filtering for second selection of CT/PET images")
+    final_df.to_excel(selected_folders_aftersecondfiltering)
 
     # Generate a dataframe with the selected examinations and saving it in the form of an Excel file.
     # Sort the dataframe by starting from the newest examination and going to the oldest.

@@ -22,10 +22,11 @@ metadata:
     filenames:
         final_selected_images_filename : 'Finalized_dataset.xlsx'
 
+
 # Resampling Task config variables
 resampling:
     voxel_spacing : [2,2,3]
-    image_size : [256,256,384]
+    image_size : [256,256,256]
 
 # Projection config variables
 projections:
