@@ -17,19 +17,22 @@ import random
 dicom.config.convert_wrong_length_to_UN = True
 
 # Global path variables
-#source_path = "/media/andres/T7 Shield/ucan_lymfom"
-#source_path = "/media/andres/T7 Shield/U-CAN-Lymfom_A"
-source_path = "F:/ucan_lymfom"
+# source_path = "/media/andres/T7 Shield/ucan_lymfom"
+# source_path = "/media/andres/T7 Shield/U-CAN-Lymfom_A"
+# source_path = "F:/ucan_lymfom"
+source_path = "D:\\ucan_lymfom"
 
 rejected_folder_path = os.path.join(source_path, 'Rejected_exams_from_U-CAN-Lymfom.xlsx')
-sourcefiltered_folder_path = os.path.join(source_path, 'SourceFiltered_exams_from_U-CAN-Lymfom.xlsx')
-incomplete_folders_path1 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom1.xlsx')
-incomplete_folders_path2 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom2.xlsx')
-selected_folders_beforefiltering = os.path.join(source_path, 'Selected_exams_beforefiltering_from_U-CAN-Lymfom.xlsx')
-selected_folders_afterfiltering = os.path.join(source_path, 'Selected_exams_afterfiltering_from_U-CAN-Lymfom.xlsx')
-selected_folders_beforesecondfiltering = os.path.join(source_path, 'Selected_exams_beforesecondfiltering_from_U-CAN-Lymfom.xlsx')
-selected_folders_aftersecondfiltering = os.path.join(source_path, 'Selected_exams_aftersecondfiltering_from_U-CAN-Lymfom.xlsx')
-final_selected_folders = os.path.join(source_path, "FinalSelected_exams_from_U-CAN-Lymfom.xlsx")
+source_filtered_folder_path = os.path.join(source_path, 'Source_Filtered_exams_from_U-CAN-Lymfom.xlsx')
+incomplete_folders_path1 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom_before_selection_process.xlsx')
+incomplete_folders_path2 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom_after_selection_process.xlsx')
+selected_folders_before_filtering = os.path.join(source_path, 'Selected_exams_before_filtering_from_U-CAN-Lymfom.xlsx')
+selected_folders_after_filtering = os.path.join(source_path, 'Selected_exams_after_filtering_from_U-CAN-Lymfom.xlsx')
+selected_folders_before_second_filtering = os.path.join(source_path, 'Selected_exams_before_second_filtering_from_U'
+                                                                     '-CAN-Lymfom.xlsx')
+selected_folders_after_second_filtering = os.path.join(source_path, 'Selected_exams_after_second_filtering_from_U-CAN'
+                                                                    '-Lymfom.xlsx')
+final_selected_folders = os.path.join(source_path, "Final_Selected_exams_from_U-CAN-Lymfom.xlsx")
 list_of_distorted_images = os.path.join(source_path, 'Distorted_exams_from_U-CAN-Lymfom.xlsx')
 
 
@@ -134,6 +137,7 @@ def data_filtering(dataframe_column):
 
         # Splitting the name of each row in order to take only the last part 
         # that contains the CT and PET info we care about.
+        patient = folder_path.rsplit(sep='/', maxsplit=2)[1]
         examination_file = folder_path.rsplit(sep='/', maxsplit=2)[-1]
         examination_file = examination_file.replace("_", "-")
 
@@ -153,110 +157,110 @@ def data_filtering(dataframe_column):
 
             # Check if a CT examination has been already selected for the current patient.
             # If yes proceed with the next folder otherwise continue with the current one.
-            if examination_file[1] in CT_selected_folders[examination_file[0]]:
+            if patient in CT_selected_folders[examination_file[0]]:
                 continue
             else:
                 # Check if the current folder contains information that we do not find useful.
                 if any(ignore in examination_file for ignore in CT_ignore_folders):
                     continue
                 else:
-                    # The following if statements go through the set of rules that have been established
-                    # in hierarchically order. Meaning that it checks if any of the folders contain information
-                    # that are more important than others. The next step is to examine the resolution of the examination.
-                    # Our priority is the following 3.0mm -> 2.0mm -> 1.0mm and if none of those is fulfilled 
-                    # then we choose the one that is closer to one by saving the path of the file to the list of 
-                    # the selected ones. Also, we save the CT selected list in order to be able to know that we 
-                    # have already selected a CT examination for the current patient.  
+                    # The following if statements go through the set of rules that have been established in
+                    # hierarchically order. Meaning that it checks if any of the folders contain information that are
+                    # more important than others. The next step is to examine the resolution of the examination. Our
+                    # priority is the following 3.0mm -> 2.0mm -> 1.0mm and if none of those is fulfilled then we
+                    # choose the one that is closer to one by saving the path of the file to the list of the selected
+                    # ones. Also, we save the CT selected list in order to be able to know that we have already
+                    # selected a CT examination for the current patient.
                     if all(item in examination_file for item in CT_specifications_first_set):
                         if exam_resolution == 3.000000:
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif any(resolution in resolution_str for resolution in resolutions):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif min(enumerate(resolutions_below_one), key=lambda x: abs(x[1] - 1)):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                     elif all(item in examination_file for item in CT_specifications_second_set):
                         if exam_resolution == 3.000000:
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif any(resolution in resolution_str for resolution in resolutions):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif min(enumerate(resolutions_below_one), key=lambda x: abs(x[1] - 1)):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                     elif all(item in examination_file for item in CT_specifications_third_set):
                         if exam_resolution == 3.00000:
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif any(resolution in resolution_str for resolution in resolutions):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif min(enumerate(resolutions_below_one), key=lambda x: abs(x[1] - 1)):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                     elif all(item in examination_file for item in CT_specifications_fourth_set):
                         if exam_resolution == 3.000000:
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif any(resolution in resolution_str for resolution in resolutions):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif min(enumerate(resolutions_below_one), key=lambda x: abs(x[1] - 1)):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                     elif all(item in examination_file for item in CT_specifications_fifth_set):
                         if exam_resolution == 3.000000:
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif any(resolution in resolution_str for resolution in resolutions):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif min(enumerate(resolutions_below_one), key=lambda x: abs(x[1] - 1)):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                     elif CT_specifications_sixth_set in examination_file:
                         if exam_resolution == 3.000000:
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif any(resolution in resolution_str for resolution in resolutions):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif min(enumerate(resolutions_below_one), key=lambda x: abs(x[1] - 1)):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                     elif all(item in examination_file for item in CT_specifications_seventh_set):
                         if exam_resolution == 3.000000:
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif any(resolution in resolution_str for resolution in resolutions):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
                         elif min(enumerate(resolutions_below_one), key=lambda x: abs(x[1] - 1)):
                             selected_exams.append(folder_path)
-                            CT_selected_folders[examination_file[0]].append(examination_file[1])
+                            CT_selected_folders[examination_file[0]].append(patient)
                             continue
 
         # The same procedure and logic is applied for the PET folders.
@@ -382,7 +386,7 @@ if __name__ == '__main__':
                    ]
     keep_list = ["CT-", "PT-"]
 
-    findir_lst = []
+    find_dir_lst = []
     rejection_lst = []
 
     for dir in directory_list:
@@ -390,20 +394,20 @@ if __name__ == '__main__':
         if any(item.lower() in dir.lower() for item in keep_list) and all(
                 item.lower() not in dir.lower() for item in remove_list):
             print(dir)
-            findir_lst.append(dir)
+            find_dir_lst.append(dir)
         else:
             rejection_lst.append(dir)
-    
+
     print(str(datetime.now()), ': Writing rejected image folders to excel file')
     rejected_df = pd.DataFrame(rejection_lst, columns=['directory'])
     rejected_df.to_excel(rejected_folder_path)
 
     # Creating a dataframe out of the dataset with the required information that are need to proceed with the filtering.
     print(str(datetime.now()), ": Loading the directory into Dataframe")
-    df = pd.DataFrame(findir_lst, columns=['directory'])
-     
+    df = pd.DataFrame(find_dir_lst, columns=['directory'])
+
     print(str(datetime.now()), ': Writing source filtered image folders to excel file')
-    df.to_excel(sourcefiltered_folder_path)
+    df.to_excel(source_filtered_folder_path)
 
     display_full(df.head(1))
     df[['source_directory', 'patient_directory', 'PET-CT_info']] = df['directory'].str.rsplit(pat='/', n=2, expand=True)
@@ -425,8 +429,7 @@ if __name__ == '__main__':
     display_full(temp_df1.head(2))
     incomplete_df = pd.merge(temp_df1, df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
     incomplete_df.to_excel(incomplete_folders_path1)
-    
-    
+
     # complete folders
     print(str(datetime.now()), ': Filtering complete folders dataframe to continue execution')
     temp_df2 = temp_df[temp_df[0] == True].copy()
@@ -453,10 +456,10 @@ if __name__ == '__main__':
     final_df = final_df.drop(columns=['Has_QCFX', 'Has_Venfas', 'Has_VEN', 'Has_VENFAS',
                                       'Has_Standard', 'Has_Nativ', 'Resolutions'])
     display_full(final_df['directory'].head(5))
-    
+
     # Writing the dataframe before running data filtering for selection of CT/PET images
     print(str(datetime.now()), ": Writing the dataframe before running data filtering for selection of CT/PET images")
-    final_df.to_excel(selected_folders_beforefiltering)
+    final_df.to_excel(selected_folders_before_filtering)
 
     # Filtering the dataframe and selecting the desired exams for each patient.
     print(str(datetime.now()), ": Running the data filtering - initial run")
@@ -465,7 +468,7 @@ if __name__ == '__main__':
 
     # Writing the dataframe after running first data filtering for selection of CT/PET images
     print(str(datetime.now()), ": Writing the dataframe after running data filtering for selection of CT/PET images")
-    selected_exams.to_excel(selected_folders_afterfiltering)
+    selected_exams.to_excel(selected_folders_after_filtering)
 
     print(str(datetime.now()), ": Number of images: ", selected_exams.shape[0])
     display_full(selected_exams.head(1))
@@ -479,10 +482,10 @@ if __name__ == '__main__':
 
     workers = num_procs - 4
     print(str(datetime.now()), ": Splitting dataframe into ", workers, " dataframes")
-    splitted_df = np.array_split(selected_exams, workers)
+    split_df = np.array_split(selected_exams, workers)
     start = time.time()
     with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
-        results = [executor.submit(outputDistortedImg, df=df) for df in splitted_df]
+        results = [executor.submit(outputDistortedImg, df=df) for df in split_df]
         for result in concurrent.futures.as_completed(results):
             try:
                 distorted_lst.extend(result.result())
@@ -509,15 +512,17 @@ if __name__ == '__main__':
     display_full(final_df1.head(1))
 
     # Writing the dataframe before running data filtering for second selection of CT/PET images
-    print(str(datetime.now()), ": Writing the dataframe before running data filtering for second selection of CT/PET images")
-    final_df.to_excel(selected_folders_beforesecondfiltering)
+    print(str(datetime.now()),
+          ": Writing the dataframe before running data filtering for second selection of CT/PET images")
+    final_df.to_excel(selected_folders_before_second_filtering)
 
     print(str(datetime.now()), ": Running data filtering - final")
     selected_exams = data_filtering(final_df1["directory"])
 
     # Writing the dataframe after running data filtering for second selection of CT/PET images
-    print(str(datetime.now()), ": Writing the dataframe after running data filtering for second selection of CT/PET images")
-    final_df.to_excel(selected_folders_aftersecondfiltering)
+    print(str(datetime.now()),
+          ": Writing the dataframe after running data filtering for second selection of CT/PET images")
+    final_df.to_excel(selected_folders_after_second_filtering)
 
     # Generate a dataframe with the selected examinations and saving it in the form of an Excel file.
     # Sort the dataframe by starting from the newest examination and going to the oldest.
@@ -526,7 +531,8 @@ if __name__ == '__main__':
     display_full(selected_exams.head(1))
     selected_exams[['source_directory', 'patient_directory', 'PET-CT_info']] = selected_exams['directory'].str.rsplit(
         pat='/', n=2, expand=True)
-    selected_exams[['system', 'npr', 'scan_date']] = selected_exams['patient_directory'].str.split(pat='_|-', n=2, expand=True)
+    selected_exams[['system', 'npr', 'scan_date']] = selected_exams['patient_directory'].str.split(pat='_|-', n=2,
+                                                                                                   expand=True)
     selected_exams.loc[:, 'Date'] = selected_exams['patient_directory'].str.split("-").str[1]
     selected_exams = selected_exams.sort_values(by='Date', ascending=False)
     selected_exams.reset_index(drop=True, inplace=True)
@@ -548,4 +554,4 @@ if __name__ == '__main__':
     final_results = final_results[final_results["PET-CT_info"].isin(list(np.ravel(temp_df[0].to_list())))]
     final_results.to_excel(final_selected_folders)
     finish = time.time()
-    print(f"Total time of running: {round(finish - start, 2)/60}")
+    print(f"Total time of running: {round(finish - start, 2) / 60}")
