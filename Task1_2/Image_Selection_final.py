@@ -268,7 +268,7 @@ def data_filtering(dataframe_column):
             examination_folder = examination_file.split("-")
             examination_folder = [string.lower() for string in examination_folder]
 
-            if examination_folder[1] in PET_selected_folders[examination_folder[0]]:
+            if patient in PET_selected_folders[examination_folder[0]]:
                 continue
             else:
                 if "qcfx" in examination_folder:
