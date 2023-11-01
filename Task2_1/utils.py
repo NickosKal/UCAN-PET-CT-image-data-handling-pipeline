@@ -48,13 +48,13 @@ def save_projections(image,modality,img_name,max_intensity=50,min_intensity=-102
     else:
         out_min=0.0
         out_max=15.0
-    #img=make_isotropic(img)
-
+    # img=make_isotropic(img)
+    img_write= sitk.Flip(image, [False, True]) #flipping across y axis
     img_write=sitk.Cast(
         # sitk.IntensityWindowing(
         #     img, windowMinimum=min_intensity, windowMaximum=max_intensity, outputMinimum=out_min, outputMaximum=out_max
         # ),
-        sitk.RescaleIntensity(image), #,outputMinimum=out_min,outputMaximum=out_max
+        sitk.RescaleIntensity(img_write), #,outputMinimum=out_min,outputMaximum=out_max
         sitk.sitkUInt8
     ) #outputMinimum=100.0, outputMaximum=255.0
 
@@ -107,7 +107,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N
                 'max': sitk.MaximumProjection}
     paxis = 0
     rotation_axis = [0,0,1]
-    rotation_angles = np.linspace(-1/2*np.pi, 1/2*np.pi, int(180.0/angle)) # angle range- [-90, +90]; 15.0 degree 
+    rotation_angles = np.linspace(0, 180, int(180.0/angle)+1) # angle range- [0, +180]; 15.0 degree 
     rotation_center = vol_img.TransformContinuousIndexToPhysicalPoint([(index-1)/2.0 for index in vol_img.GetSize()])
 
     rotation_transform = sitk.VersorRigid3DTransform()
@@ -200,11 +200,11 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N
         #print('Size before saving: ',sitk.Extract(proj_image, extract_size).GetSize())
         
         if save_img:
-            imgname= img_n + r'_{0}_image_{1}.png'.format(modality + '_' + t_type,i)
+            imgname= img_n + r'_{0}_image_{1}.png'.format(modality + '_' + t_type,ang)
             save_projections(sitk.InvertIntensity(axes_shifted_pi,maximum=1), modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
             #save_projections(axes_shifted_pi, modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
         i+=1
-    print(f'Finished generating {int(180.0/angle)} - {ptype} intensity 2D projections from the {modality} volume image! ')
+    print(f'Finished generating {int(180.0/angle)+1} - {ptype} intensity 2D projections from the {modality} volume image! ')
 
 #Testing
 # if __name__=="__main__":
