@@ -99,7 +99,7 @@ def get_proj_after_mask(img,max_i,min_i,hu_type):
     return op_img
 
 
-def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img_n=''):
+def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N',save_img=True,img_n=''):
     projection = {'sum': sitk.SumProjection,
                 'mean':  sitk.MeanProjection,
                 'std': sitk.StandardDeviationProjection,
@@ -107,7 +107,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
                 'max': sitk.MaximumProjection}
     paxis = 0
     rotation_axis = [0,0,1]
-    rotation_angles = np.linspace(-1/2*np.pi, 1/2*np.pi, int(180.0/angle)) #15.0 degree 
+    rotation_angles = np.linspace(-1/2*np.pi, 1/2*np.pi, int(180.0/angle)) # angle range- [-90, +90]; 15.0 degree 
     rotation_center = vol_img.TransformContinuousIndexToPhysicalPoint([(index-1)/2.0 for index in vol_img.GetSize()])
 
     rotation_transform = sitk.VersorRigid3DTransform()
@@ -122,8 +122,8 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
                 image_bounds.append(vol_img.TransformIndexToPhysicalPoint([i,j,k]))
 
     all_points = []
-    for angle in rotation_angles:
-        rotation_transform.SetRotation(rotation_axis, angle)    
+    for ang in rotation_angles:
+        rotation_transform.SetRotation(rotation_axis, ang)    
         all_points.extend([rotation_transform.TransformPoint(pnt) for pnt in image_bounds])
         
     all_points = np.array(all_points)
@@ -158,10 +158,10 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
 
         pix_array=sitk.GetArrayFromImage(vol_img)
         maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
-        print(maxtensity,mintensity)
+        #print(maxtensity,mintensity)
         vol_img = sitk.Cast(    
         sitk.IntensityWindowing(
-            vol_img, windowMinimum=mintensity, windowMaximum=maxtensity, outputMinimum=0.0, outputMaximum=1500.0
+            vol_img, windowMinimum=mintensity, windowMaximum=clip_value, outputMinimum=0.0, outputMaximum=255
         ),
         vol_img.GetPixelID(),
         )
@@ -175,8 +175,8 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
     proj_images = []
     i=0
 
-    for angle in rotation_angles:
-        rotation_transform.SetRotation(rotation_axis, angle) 
+    for ang in rotation_angles:
+        rotation_transform.SetRotation(rotation_axis, ang) 
         resampled_image = sitk.Resample(image1=vol_img,
                                         size=new_sz,
                                         transform=rotation_transform,
@@ -204,6 +204,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
             save_projections(sitk.InvertIntensity(axes_shifted_pi,maximum=1), modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
             #save_projections(axes_shifted_pi, modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
         i+=1
+    print(f'Finished generating {int(180.0/angle)} - {ptype} intensity 2D projections from the {modality} volume image! ')
 
 #Testing
 # if __name__=="__main__":
