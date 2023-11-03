@@ -117,40 +117,41 @@ Function to get 3D masks for CT scans to segment out the exact tissue type.
 
 '''
 
-def get_proj_after_mask(img,max_i,min_i,hu_type):
-    multiply= sitk.MultiplyImageFilter()
-    if hu_type == 'Bone' or hu_type == 'bone' or hu_type == 'B':
-        seg = sitk.BinaryThreshold(
-        img, lowerThreshold=200, upperThreshold=max_i,insideValue=1, outsideValue=0
-        )
-        op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
+def get_proj_after_mask(img):
+    pix_array=sitk.GetArrayFromImage(img)
+    max_i, min_i=float(pix_array.max()),float(pix_array.min())
+
+    #multiply= sitk.MultiplyImageFilter()
+    #if hu_type == 'Bone' or hu_type == 'bone' or hu_type == 'B':
+    bone_mask = sitk.BinaryThreshold(
+    img, lowerThreshold=200, upperThreshold=max_i,insideValue=1, outsideValue=0
+    )
+    
+    #bone_mask = multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
         # path= img_n + r'_{0}_image.nii'.format(modality + '_' + type)
         # save_as_gz(op_img,path)
-    elif hu_type == 'Lean Tissue' or hu_type == 'lean' or hu_type == 'LT':
-        seg = sitk.BinaryThreshold(
-        img, lowerThreshold=-29, upperThreshold=150, insideValue=1, outsideValue=0
-        )
-        op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
+    #elif hu_type == 'Lean Tissue' or hu_type == 'lean' or hu_type == 'LT':
+    lean_mask = sitk.BinaryThreshold(
+    img, lowerThreshold=-29, upperThreshold=150, insideValue=1, outsideValue=0
+    )
+    #lean_mask = multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
 
-    elif hu_type == 'Adipose' or hu_type == 'adipose' or hu_type == 'AT':
-        seg = sitk.BinaryThreshold(
-        img, lowerThreshold=-199, upperThreshold=-30, insideValue=1, outsideValue=0
-        )
-        op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
+    #elif hu_type == 'Adipose' or hu_type == 'adipose' or hu_type == 'AT':
+    adipose_mask = sitk.BinaryThreshold(
+    img, lowerThreshold=-199, upperThreshold=-30, insideValue=1, outsideValue=0
+    )
+    #adipose_mask = multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
         
-    elif hu_type == 'Air' or hu_type == 'A':
-        seg = sitk.BinaryThreshold(
-        img, lowerThreshold=min_i, upperThreshold=-191, insideValue=1, outsideValue=0
-        )
-        op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
+    #elif hu_type == 'Air' or hu_type == 'A':
+    air_mask = sitk.BinaryThreshold(
+    img, lowerThreshold=min_i, upperThreshold=-191, insideValue=1, outsideValue=0
+    )
+    #air_mask = multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
     
-    elif hu_type=='N':
-        op_img=img
-    
-    return op_img
+    return bone_mask, lean_mask, adipose_mask, air_mask
 
 
-def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img_n=''):
+def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N',save_img=True,img_n=''):
     projection = {'sum': sitk.SumProjection,
                 'mean':  sitk.MeanProjection,
                 'std': sitk.StandardDeviationProjection,
@@ -158,7 +159,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
                 'max': sitk.MaximumProjection}
     paxis = 0
     rotation_axis = [0,0,1]
-    rotation_angles = np.linspace(-1/2*np.pi, 1/2*np.pi, int(180.0/angle)) #15.0 degree 
+    rotation_angles = np.linspace(0, 180, int(180.0/angle)+1) # angle range- [0, +180]; 15.0 degree 
     rotation_center = vol_img.TransformContinuousIndexToPhysicalPoint([(index-1)/2.0 for index in vol_img.GetSize()])
 
     rotation_transform = sitk.VersorRigid3DTransform()
@@ -173,8 +174,8 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
                 image_bounds.append(vol_img.TransformIndexToPhysicalPoint([i,j,k]))
 
     all_points = []
-    for angle in rotation_angles:
-        rotation_transform.SetRotation(rotation_axis, angle)    
+    for ang in rotation_angles:
+        rotation_transform.SetRotation(rotation_axis, ang)    
         all_points.extend([rotation_transform.TransformPoint(pnt) for pnt in image_bounds])
         
     all_points = np.array(all_points)
@@ -191,14 +192,18 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
 
     new_spc = [np.min(vol_img.GetSpacing())]*3
     new_sz = [int(sz/spc + 0.5) for spc,sz in zip(new_spc, max_bounds-min_bounds)]
+
+    pix_array=sitk.GetArrayFromImage(vol_img)
+    maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
     
     if modality == 'CT':
-        default_pix_val=20
+        default_pix_val=-1024
+    else:
+        default_pix_val=0
 
-
+    """
     elif modality == 'PET':
         default_pix_val=0
-
         #clipping intensities
 
         # intensity_fil=sitk.IntensityWindowingImageFilter()
@@ -208,12 +213,11 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
         # intensity_fil.SetOutputMinimum=0
         # vol_img= intensity_fil.Execute(vol_img)
 
-        pix_array=sitk.GetArrayFromImage(vol_img)
-        maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
-        print(maxtensity,mintensity)
+        
+        #print(maxtensity,mintensity)
         vol_img = sitk.Cast(    
         sitk.IntensityWindowing(
-            vol_img, windowMinimum=mintensity, windowMaximum=maxtensity, outputMinimum=0.0, outputMaximum=15.0
+            vol_img, windowMinimum=mintensity, windowMaximum=clip_value, outputMinimum=0.0, outputMaximum=255
         ),
         vol_img.GetPixelID(),
         )
@@ -222,40 +226,13 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
         # pix_array=sitk.GetArrayFromImage(vol_img)
         # maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
         # print(maxtensity,mintensity)
-
-    elif modality == 'SUV':
-        default_pix_val=0
-
-        #clipping intensities
-
-        # intensity_fil=sitk.IntensityWindowingImageFilter()
-        # intensity_fil.SetWindowMaximum=maxtensity
-        # intensity_fil.SetWindowMinimum=mintensity
-        # intensity_fil.SetOutputMaximum=50000
-        # intensity_fil.SetOutputMinimum=0
-        # vol_img= intensity_fil.Execute(vol_img)
-
-        pix_array=sitk.GetArrayFromImage(vol_img)
-        maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
-        print(maxtensity,mintensity)
-        vol_img = sitk.Cast(    
-        sitk.IntensityWindowing(
-            vol_img, windowMinimum=mintensity, windowMaximum=maxtensity, outputMinimum=0.0, outputMaximum=2.0
-        ),
-        vol_img.GetPixelID(),
-        )
-
-        # print('After clipping:')
-        # pix_array=sitk.GetArrayFromImage(vol_img)
-        # maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
-        # print(maxtensity,mintensity)
-
+    """
 
     proj_images = []
     i=0
 
-    for angle in rotation_angles:
-        rotation_transform.SetRotation(rotation_axis, angle) 
+    for ang in rotation_angles:
+        rotation_transform.SetRotation(rotation_axis, ang) 
         resampled_image = sitk.Resample(image1=vol_img,
                                         size=new_sz,
                                         transform=rotation_transform,
@@ -265,12 +242,15 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
                                         outputDirection = [1,0,0,0,1,0,0,0,1],
                                         defaultPixelValue = default_pix_val, 
                                         outputPixelType = vol_img.GetPixelID())
+        """
         if modality=='CT':
             masked_resampled_image=get_proj_after_mask(resampled_image,maxtensity,mintensity,t_type)
         else:
             masked_resampled_image=resampled_image
-
         proj_image = projection[ptype](masked_resampled_image, paxis)
+        """
+
+        proj_image = projection[ptype](resampled_image, paxis)
         extract_size = list(proj_image.GetSize())
         extract_size[paxis]=0 
         axes_shifted_pi=sitk.Extract(proj_image, extract_size) #flip axes
@@ -279,10 +259,12 @@ def get_2D_projections(vol_img,modality,ptype,angle,t_type='N',save_img=True,img
         #print('Size before saving: ',sitk.Extract(proj_image, extract_size).GetSize())
         
         if save_img:
-            imgname= img_n + r'_{0}_image_{1}.png'.format(modality + '_' + t_type,i)
+            imgname= img_n + r'image_{0}.png'.format(ang)
             save_projections(sitk.InvertIntensity(axes_shifted_pi,maximum=1), modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
             #save_projections(axes_shifted_pi, modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
         i+=1
+    print(f'Finished generating {int(180.0/angle)+1} - {ptype} intensity 2D projections from the {modality} volume image! ')
+
 
 def compute_suv(vol_img, PatientWeight, AcquisitionTime , RadiopharmaceuticalStartTime, RadionuclideHalfLife, RadionuclideTotalDose):
     

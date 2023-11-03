@@ -25,7 +25,7 @@ metadata:
 
 # Resampling Task config variables
 resampling:
-    voxel_spacing : [2,2,3]
+    voxel_spacing : [2.0364201068878174, 2.0364201068878174, 3.0]
     image_size : [256,256,256]
 
 # Projection config variables
@@ -33,7 +33,8 @@ projections:
     paths:
         destination_path : 'Selected_for_UCAN_project/2dprojections' 
     variables:
-        modality : ['CT', 'PET', 'SUV']
+        modality : ['CT', 'PT', 'SUV']
         tissue_type : ['LT', 'AT', 'LT' , 'B' , 'N']
         projection_type : ['sum', 'min', 'max', 'mean', 'std']
+        angles : [0, 90]
 ...
