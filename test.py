@@ -58,16 +58,3 @@ temp_df = df.groupby(['npr', 'scan_date']).apply(
         'PT').any() else False).reset_index()
 # display_full(temp_df.head(2))
 
-for folder_path in df['directory']:
-
-    # Splitting the name of each row in order to take only the last part
-    # that contains the CT and PET info we care about.
-    patient = folder_path.rsplit(sep='\\', maxsplit=2)[1]
-    examination_file = folder_path.rsplit(sep='\\', maxsplit=2)[-1]
-    examination_file = examination_file.replace("_", "-")
-
-    # Check if the folder has to do with CT or PET examination.
-    if examination_file.startswith("CT-"):
-        examination_file = examination_file.split("-")
-        examination_file = [string.lower() for string in examination_file]
-        # print(examination_file)

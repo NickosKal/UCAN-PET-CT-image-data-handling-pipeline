@@ -17,15 +17,15 @@ import random
 dicom.config.convert_wrong_length_to_UN = True
 
 # Global path variables
-# source_path = "/media/andres/T7 Shield/ucan_lymfom"
+source_path = "/media/andres/T7 Shield/ucan_lymfom"
 # source_path = "/media/andres/T7 Shield/U-CAN-Lymfom_A"
 # source_path = "F:/ucan_lymfom"
-source_path = "D:\\ucan_lymfom"
+#source_path = "D:\\ucan_lymfom"
 
 rejected_folder_path = os.path.join(source_path, 'Rejected_exams_from_U-CAN-Lymfom.xlsx')
 source_filtered_folder_path = os.path.join(source_path, 'Source_Filtered_exams_from_U-CAN-Lymfom.xlsx')
-incomplete_folders_path1 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom_before_selection_process.xlsx')
-incomplete_folders_path2 = os.path.join(source_path, 'No_PTorCT_exams_from_U-CAN-Lymfom_after_selection_process.xlsx')
+incomplete_folders_path1 = os.path.join(source_path, 'No_PT_or_CT_exams_from_U-CAN-Lymfom_before_selection_process.xlsx')
+incomplete_folders_path2 = os.path.join(source_path, 'No_PT_or_CT_exams_from_U-CAN-Lymfom_after_selection_process.xlsx')
 selected_folders_before_filtering = os.path.join(source_path, 'Selected_exams_before_filtering_from_U-CAN-Lymfom.xlsx')
 selected_folders_after_filtering = os.path.join(source_path, 'Selected_exams_after_filtering_from_U-CAN-Lymfom.xlsx')
 selected_folders_before_second_filtering = os.path.join(source_path, 'Selected_exams_before_second_filtering_from_U'
@@ -46,84 +46,83 @@ def display_full(x):
         print(x)
 
 
-def checkDistortedImg(vol_img, ptype='mean', angle=90):
-    projection = {'sum': sitk.SumProjection,
-                  'mean': sitk.MeanProjection,
-                  'std': sitk.StandardDeviationProjection,
-                  'min': sitk.MinimumProjection,
-                  'max': sitk.MaximumProjection}
-    paxis = 0
+# def checkDistortedImg(vol_img, ptype='mean', angle=90):
+#     projection = {'sum': sitk.SumProjection,
+#                   'mean': sitk.MeanProjection,
+#                   'std': sitk.StandardDeviationProjection,
+#                   'min': sitk.MinimumProjection,
+#                   'max': sitk.MaximumProjection}
+#     paxis = 0
 
-    rotation_axis = [0, 0, 1]
-    rotation_angles = np.linspace(-1 / 2 * np.pi, 1 / 2 * np.pi, int(180.0 / angle))  # 15.0 degree
+#     rotation_axis = [0, 0, 1]
+#     rotation_angles = np.linspace(-1 / 2 * np.pi, 1 / 2 * np.pi, int(180.0 / angle))  # 15.0 degree
 
-    rotation_center = vol_img.TransformContinuousIndexToPhysicalPoint(
-        [(index - 1) / 2.0 for index in vol_img.GetSize()])
+#     rotation_center = vol_img.TransformContinuousIndexToPhysicalPoint(
+#         [(index - 1) / 2.0 for index in vol_img.GetSize()])
 
-    rotation_transform = sitk.VersorRigid3DTransform()
-    rotation_transform.SetCenter(rotation_center)
+#     rotation_transform = sitk.VersorRigid3DTransform()
+#     rotation_transform.SetCenter(rotation_center)
 
-    # Compute bounding box of rotating volume and the resampling grid structure
-    image_indexes = list(zip([0, 0, 0], [sz - 1 for sz in vol_img.GetSize()]))
-    image_bounds = []
-    for i in image_indexes[0]:
-        for j in image_indexes[1]:
-            for k in image_indexes[2]:
-                image_bounds.append(vol_img.TransformIndexToPhysicalPoint([i, j, k]))
+#     # Compute bounding box of rotating volume and the resampling grid structure
+#     image_indexes = list(zip([0, 0, 0], [sz - 1 for sz in vol_img.GetSize()]))
+#     image_bounds = []
+#     for i in image_indexes[0]:
+#         for j in image_indexes[1]:
+#             for k in image_indexes[2]:
+#                 image_bounds.append(vol_img.TransformIndexToPhysicalPoint([i, j, k]))
 
-    all_points = []
-    for angle in rotation_angles:
-        rotation_transform.SetRotation(rotation_axis, angle)
-        all_points.extend([rotation_transform.TransformPoint(pnt) for pnt in image_bounds])
+#     all_points = []
+#     for angle in rotation_angles:
+#         rotation_transform.SetRotation(rotation_axis, angle)
+#         all_points.extend([rotation_transform.TransformPoint(pnt) for pnt in image_bounds])
 
-    all_points = np.array(all_points)
-    min_bounds = all_points.min(0)
-    max_bounds = all_points.max(0)
+#     all_points = np.array(all_points)
+#     min_bounds = all_points.min(0)
+#     max_bounds = all_points.max(0)
 
-    new_spc = [np.min(vol_img.GetSpacing())] * 3
-    new_sz = [int(sz / spc + 0.5) for spc, sz in zip(new_spc, max_bounds - min_bounds)]
+#     new_spc = [np.min(vol_img.GetSpacing())] * 3
+#     new_sz = [int(sz / spc + 0.5) for spc, sz in zip(new_spc, max_bounds - min_bounds)]
 
-    for angle in rotation_angles:
-        rotation_transform.SetRotation(rotation_axis, angle)
-        resampled_image = sitk.Resample(image1=vol_img,
-                                        size=new_sz,
-                                        transform=rotation_transform,
-                                        interpolator=sitk.sitkLinear,
-                                        outputOrigin=min_bounds,
-                                        outputSpacing=new_spc,
-                                        outputDirection=[1, 0, 0, 0, 1, 0, 0, 0, 1],
-                                        defaultPixelValue=-20,
-                                        # HU unit for air in CT, possibly set to 0 in other cases
-                                        outputPixelType=vol_img.GetPixelID())
-        proj_image = projection[ptype](resampled_image, paxis)
-        extract_size = list(proj_image.GetSize())
-        extract_size[paxis] = 0
-        sitk.Extract(proj_image, extract_size)
+#     for angle in rotation_angles:
+#         rotation_transform.SetRotation(rotation_axis, angle)
+#         resampled_image = sitk.Resample(image1=vol_img,
+#                                         size=new_sz,
+#                                         transform=rotation_transform,
+#                                         interpolator=sitk.sitkLinear,
+#                                         outputOrigin=min_bounds,
+#                                         outputSpacing=new_spc,
+#                                         outputDirection=[1, 0, 0, 0, 1, 0, 0, 0, 1],
+#                                         defaultPixelValue=-20,
+#                                         # HU unit for air in CT, possibly set to 0 in other cases
+#                                         outputPixelType=vol_img.GetPixelID())
+#         proj_image = projection[ptype](resampled_image, paxis)
+#         extract_size = list(proj_image.GetSize())
+#         extract_size[paxis] = 0
+#         sitk.Extract(proj_image, extract_size)
 
+# def outputDistortedImg(df):
+#     pid = os.getpid()
+#     ppid = os.getppid()
+#     start = time.time()
+#     print("PPID %s->%s Started on %s" % (ppid, pid, str(datetime.now())))
 
-def outputDistortedImg(df):
-    pid = os.getpid()
-    ppid = os.getppid()
-    start = time.time()
-    print("PPID %s->%s Started on %s" % (ppid, pid, str(datetime.now())))
+#     exception_lst = []
 
-    exception_lst = []
+#     for _, row in df.iterrows():
+#         reader = sitk.ImageSeriesReader()
+#         dicom_names = reader.GetGDCMSeriesFileNames(row['directory'])
+#         reader.SetFileNames(dicom_names)
+#         vol_img = reader.Execute()
+#         try:
+#             checkDistortedImg(vol_img)
+#         except:
+#             exception_lst.append(row['directory'])
 
-    for _, row in df.iterrows():
-        reader = sitk.ImageSeriesReader()
-        dicom_names = reader.GetGDCMSeriesFileNames(row['directory'])
-        reader.SetFileNames(dicom_names)
-        vol_img = reader.Execute()
-        try:
-            checkDistortedImg(vol_img)
-        except:
-            exception_lst.append(row['directory'])
+#     end = time.time()
 
-    end = time.time()
+#     print("PPID %s Completed in %s" % (os.getpid(), round((end - start) / 60, 2)))
 
-    print("PPID %s Completed in %s" % (os.getpid(), round((end - start) / 60, 2)))
-
-    return exception_lst
+#     return exception_lst
 
 
 def data_filtering(dataframe_column):
@@ -268,30 +267,30 @@ def data_filtering(dataframe_column):
             examination_folder = examination_file.split("-")
             examination_folder = [string.lower() for string in examination_folder]
 
-            if examination_folder[1] in PET_selected_folders[examination_folder[0]]:
+            if patient in PET_selected_folders[examination_folder[0]]:
                 continue
             else:
                 if "qcfx" in examination_folder:
                     if all(item in examination_folder for item in PET_specifications_first_set):
                         selected_exams.append(folder_path)
-                        PET_selected_folders[examination_folder[0]].append(examination_folder[1])
+                        PET_selected_folders[examination_folder[0]].append(patient)
                         continue
                     elif "static" not in examination_folder:
                         selected_exams.append(folder_path)
-                        PET_selected_folders[examination_folder[0]].append(examination_folder[1])
+                        PET_selected_folders[examination_folder[0]].append(patient)
                         continue
                 elif "qcfx" not in examination_folder:
                     if all(item in examination_folder for item in PET_specifications_second_set):
                         selected_exams.append(folder_path)
-                        PET_selected_folders[examination_folder[0]].append(examination_folder[1])
+                        PET_selected_folders[examination_folder[0]].append(patient)
                         continue
                     elif re.search(r'\b{}\b'.format(re.escape("AC")), examination_file):
                         selected_exams.append(folder_path)
-                        PET_selected_folders[examination_folder[0]].append(examination_folder[1])
+                        PET_selected_folders[examination_folder[0]].append(patient)
                         continue
                     elif all(item in examination_folder for item in PET_specifications_third_set):
                         selected_exams.append(folder_path)
-                        PET_selected_folders[examination_folder[0]].append(examination_folder[1])
+                        PET_selected_folders[examination_folder[0]].append(patient)
                         continue
     return selected_exams
 
@@ -384,6 +383,7 @@ if __name__ == '__main__':
                    'cor',
                    'ot-'
                    ]
+                 
     keep_list = ["CT-", "PT-"]
 
     find_dir_lst = []
@@ -393,7 +393,6 @@ if __name__ == '__main__':
         dir = dir.replace('\\', '/')
         if any(item.lower() in dir.lower() for item in keep_list) and all(
                 item.lower() not in dir.lower() for item in remove_list):
-            print(dir)
             find_dir_lst.append(dir)
         else:
             rejection_lst.append(dir)
@@ -409,36 +408,44 @@ if __name__ == '__main__':
     print(str(datetime.now()), ': Writing source filtered image folders to excel file')
     df.to_excel(source_filtered_folder_path)
 
-    display_full(df.head(1))
-    df[['source_directory', 'patient_directory', 'PET-CT_info']] = df['directory'].str.rsplit(pat='/', n=2, expand=True)
+    exams_with_one_file = pd.read_excel("/media/andres/T7 Shield/Excel_Files_for_UCAN/Excel_files/01_11_2023/exams_with_one_file.xlsx")
+
+    temporary_df = df[~df.directory.isin(exams_with_one_file.directory)]
+    print("--- INITIAL DATAFRAME ---")
+    display_full(temporary_df.head(3))
+    temporary_df[['source_directory', 'patient_directory', 'PET-CT_info']] = temporary_df['directory'].str.rsplit(pat='/', n=2, expand=True)
 
     # Uncomment to run on Windows
     # df[['source_directory', 'patient_info']] = df['directory'].str.split(pat='/', n=1, expand=True)
     # df[['patient_directory', 'PET-CT_info']] = df['patient_info'].str.split(pat='\\', n=1, expand=True)
 
-    df[['system', 'npr', 'scan_date']] = df['patient_directory'].str.split(pat='_|-', n=2, expand=True)
-    temp_df = df.groupby(['npr', 'scan_date']).apply(
+    temporary_df[['system', 'npr', 'scan_date']] = temporary_df['patient_directory'].str.split(pat='_|-', n=2, expand=True)
+    temp_df = temporary_df.groupby(['npr', 'scan_date']).apply(
         lambda x: True if x['PET-CT_info'].str.startswith('CT').any() and x['PET-CT_info'].str.startswith(
             'PT').any() else False).reset_index()
-    display_full(temp_df.head(2))
+    print("--- TEMPORARY DATAFRAME ---")
+    display_full(temp_df.head(3))
 
     # incomplete folders
     print(str(datetime.now()), ': Writing incomplete folders dataframe to excel')
     temp_df1 = temp_df[temp_df[0] == False].copy()
     print(str(datetime.now()), ': incomplete df shape: ', temp_df1.shape)
-    display_full(temp_df1.head(2))
-    incomplete_df = pd.merge(temp_df1, df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
+    print("--- INCOMPLETE FOLDERS DATAFRAME ---")
+    display_full(temp_df1.head(3))
+    incomplete_df = pd.merge(temp_df1, temporary_df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
     incomplete_df.to_excel(incomplete_folders_path1)
 
     # complete folders
     print(str(datetime.now()), ': Filtering complete folders dataframe to continue execution')
     temp_df2 = temp_df[temp_df[0] == True].copy()
     print(str(datetime.now()), ': complete df shape: ', temp_df2.shape)
-    display_full(temp_df2.head(2))
-    new_df = pd.merge(temp_df2, df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
+    print("--- COMPLETE FOLDERS DATAFRAME ---")
+    display_full(temp_df2.head(3))
+    new_df = pd.merge(temp_df2, temporary_df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
     print(str(datetime.now()), ': Shape before dropping na value: ', new_df.shape)
     pre_sorted_df = new_df.dropna()
-    print(str(datetime.now()), ': Shape before dropping na value: ', pre_sorted_df.shape)
+    print(str(datetime.now()), ': Shape after dropping na value: ', pre_sorted_df.shape)
+    display_full(pre_sorted_df.head(5))
 
     # Sort the dataset according to the rules we have in order for the most desired exams to be at the top.
     pre_sorted_df.loc[:, 'Resolutions'] = pre_sorted_df.loc[:, 'PET-CT_info'].str.split('-').str[-1].str.extract(
@@ -455,9 +462,10 @@ if __name__ == '__main__':
     final_df.reset_index(drop=True, inplace=True)
     final_df = final_df.drop(columns=['Has_QCFX', 'Has_Venfas', 'Has_VEN', 'Has_VENFAS',
                                       'Has_Standard', 'Has_Nativ', 'Resolutions'])
-    display_full(final_df['directory'].head(5))
+    # print("--- FINALIZED DATAFRAME ---")
+    # display_full(final_df['directory'].head(5))
 
-    # Writing the dataframe before running data filtering for selection of CT/PET images
+    # # Writing the dataframe before running data filtering for selection of CT/PET images
     print(str(datetime.now()), ": Writing the dataframe before running data filtering for selection of CT/PET images")
     final_df.to_excel(selected_folders_before_filtering)
 
@@ -471,87 +479,44 @@ if __name__ == '__main__':
     selected_exams.to_excel(selected_folders_after_filtering)
 
     print(str(datetime.now()), ": Number of images: ", selected_exams.shape[0])
-    display_full(selected_exams.head(1))
-
-    logical = False
-    distorted_lst = []
-    num_procs = psutil.cpu_count(logical=logical)
-    if len(sys.argv) > 1:
-        num_procs = int(sys.argv[1])
-    print(str(datetime.now()), ": Number of processes available: ", num_procs)
-
-    workers = num_procs - 4
-    print(str(datetime.now()), ": Splitting dataframe into ", workers, " dataframes")
-    split_df = np.array_split(selected_exams, workers)
-    start = time.time()
-    with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
-        results = [executor.submit(outputDistortedImg, df=df) for df in split_df]
-        for result in concurrent.futures.as_completed(results):
-            try:
-                distorted_lst.extend(result.result())
-            except Exception as ex:
-                print(str(ex))
-                pass
-    end = time.time()
-
-    print(str(datetime.now()), ": Writing final distorted images folders to excel file")
-    try:
-        distorted_df = pd.DataFrame(distorted_lst, columns=['directory'])
-        distorted_df.to_excel(list_of_distorted_images)
-    except:
-        print(str(datetime.now()), ": Error while writing final distorted images folders to excel file")
-
-    print("-------------------------------------------")
-    print(str(datetime.now()), ": PPID %s Completed in %s" % (os.getpid(), round(end - start, 2) / 60))
-
-    print(str(datetime.now()), ": Distorted list: ", distorted_lst[:2])
-    # filter distorted images from main dataframe
-    print(str(datetime.now()), ": Removing distorted images from main dataframe")
-    final_df1 = final_df[~final_df["directory"].isin(distorted_lst)].copy()
-    print(str(datetime.now()), ": main dataframe shape: ", final_df1.shape)
-    display_full(final_df1.head(1))
-
-    # Writing the dataframe before running data filtering for second selection of CT/PET images
-    print(str(datetime.now()),
-          ": Writing the dataframe before running data filtering for second selection of CT/PET images")
-    final_df.to_excel(selected_folders_before_second_filtering)
-
-    print(str(datetime.now()), ": Running data filtering - final")
-    selected_exams = data_filtering(final_df1["directory"])
-
-    # Writing the dataframe after running data filtering for second selection of CT/PET images
-    print(str(datetime.now()),
-          ": Writing the dataframe after running data filtering for second selection of CT/PET images")
-    final_df.to_excel(selected_folders_after_second_filtering)
+    # print("--- SELECTED EXAMS DATAFRAME ---")
+    # display_full(selected_exams.head(3))
 
     # Generate a dataframe with the selected examinations and saving it in the form of an Excel file.
     # Sort the dataframe by starting from the newest examination and going to the oldest.
     print(str(datetime.now()), ": Creating final dataframe having selected exams")
     selected_exams = pd.DataFrame(selected_exams, columns=["directory"])
-    display_full(selected_exams.head(1))
     selected_exams[['source_directory', 'patient_directory', 'PET-CT_info']] = selected_exams['directory'].str.rsplit(
         pat='/', n=2, expand=True)
     selected_exams[['system', 'npr', 'scan_date']] = selected_exams['patient_directory'].str.split(pat='_|-', n=2,
                                                                                                    expand=True)
     selected_exams.loc[:, 'Date'] = selected_exams['patient_directory'].str.split("-").str[1]
-    selected_exams = selected_exams.sort_values(by='Date', ascending=False)
+    selected_exams = selected_exams.sort_values(by='patient_directory', ascending=False)
     selected_exams.reset_index(drop=True, inplace=True)
     selected_exams = selected_exams.drop(columns='Date')
+    print("--- SORTED BASED ON DATE SELECTED EXAMS DATAFRAME ---")
+    display_full(selected_exams.head(3))
 
     # Filter patient without either PET or CT
-    No_PTorCT_agg = selected_exams.groupby(['patient_directory']).apply(
+    No_PET_or_CT_agg = selected_exams.groupby(['patient_directory']).apply(
         lambda x: True if x['PET-CT_info'].str.startswith("CT-").any() and x['PET-CT_info'].str.startswith(
             "PT-").any() else False).reset_index()
-    No_PTorCT_Patlst = No_PTorCT_agg[No_PTorCT_agg[0] == False]['patient_directory'].to_list()
-    No_PTorCT_df = selected_exams[selected_exams["patient_directory"].isin(No_PTorCT_Patlst)]
-    No_PTorCT_df.to_excel(incomplete_folders_path2)
-    print("No_PTorCT_df.shape: ", No_PTorCT_df.shape)
+    No_PET_or_CT_patient_list = No_PET_or_CT_agg[No_PET_or_CT_agg[0] == False]['patient_directory'].to_list()
+    No_PET_or_CT_df = selected_exams[selected_exams["patient_directory"].isin(No_PET_or_CT_patient_list)]
+    No_PET_or_CT_df.to_excel(incomplete_folders_path2)
+    print("No_PET_or_CT_df.shape: ", No_PET_or_CT_df.shape)
+    display_full(No_PET_or_CT_df.head(3))
 
-    final_results = selected_exams[~selected_exams["patient_directory"].isin(No_PTorCT_Patlst)]
-    temp_df = final_results.groupby(['patient_directory']).apply(
+    final_results = selected_exams[~selected_exams["patient_directory"].isin(No_PET_or_CT_patient_list)]
+    print("---Final Dataframe---")
+    print(final_results.shape)
+    display_full(final_results.head(21))
+    final_temp_df = final_results.groupby(['patient_directory']).apply(
         lambda x: finalPETCT(x['PET-CT_info'].to_list())).reset_index()
+    print("---Final Temp Dataframe---")
+    display_full(final_temp_df.head(3))
 
-    final_results = final_results[final_results["PET-CT_info"].isin(list(np.ravel(temp_df[0].to_list())))]
+    final_results = final_results[final_results["PET-CT_info"].isin(list(np.ravel(final_temp_df[0].to_list())))]
     final_results.to_excel(final_selected_folders)
     finish = time.time()
     print(f"Total time of running: {round(finish - start, 2) / 60}")
