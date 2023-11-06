@@ -18,7 +18,7 @@ CT(Grayscale) + PT(Color) = Overlap 2D img
 
 import SimpleITK as sitk
 import numpy as np
-
+import itertools
 
 '''
 
@@ -38,34 +38,106 @@ Function to save 2d simpleitk projection objects as uint8 png images
 
 '''
 
-def save_projections(image,modality,img_name,max_intensity=50,min_intensity=-1024):
+def save_projections_as_png(image,img_name):
     writer = sitk.ImageFileWriter()
     #img=sitk.Extract(image, image.GetSize())
     writer.SetFileName(img_name)
-    if modality=="CT":
-        out_min=0.0
-        out_max=255.0
-    else:
-        out_min=0.0
-        out_max=15.0
-    # img=make_isotropic(img)
     img_write= sitk.Flip(image, [False, True]) #flipping across y axis
     img_write=sitk.Cast(
-        # sitk.IntensityWindowing(
-        #     img, windowMinimum=min_intensity, windowMaximum=max_intensity, outputMinimum=out_min, outputMaximum=out_max
-        # ),
-        sitk.RescaleIntensity(img_write), #,outputMinimum=out_min,outputMaximum=out_max
+        sitk.RescaleIntensity(img_write),
         sitk.sitkUInt8
-    ) #outputMinimum=100.0, outputMaximum=255.0
-
+    )
     writer.Execute(img_write)  #sitk.Cast(sitk.RescaleIntensity(img,outputMinimum=0,outputMaximum=15)
+
+'''
+
+Function to save 2d simpleitk projection images as a numpy array
+
+'''
+
+def save_projections_as_nparr(image,img_name):
+    arr= sitk.GetArrayFromImage(sitk.Flip(image, [False, True]))
+    np.save(img_name,arr)
+
+    """
+    Many file formats (e.g. jpg, png,...) expect the pixels to be isotropic, same
+    spacing for all axes. Saving non-isotropic data in these formats will result in
+    distorted images. This function makes an image isotropic via resampling, if needed.
+    Args:
+        image (SimpleITK.Image): Input image.
+        interpolator: By default the function uses a linear interpolator. For
+                      label images one should use the sitkNearestNeighbor interpolator
+                      so as not to introduce non-existant labels.
+        spacing (float): Desired spacing. If none given then use the smallest spacing from
+                         the original image.
+        default_value (image.GetPixelID): Desired pixel value for resampled points that fall
+                                          outside the original image (e.g. HU value for air, -1000,
+                                          when image is CT).
+        standardize_axes (bool): If the original image axes were not the standard ones, i.e. non
+                                 identity cosine matrix, we may want to resample it to have standard
+                                 axes. To do that, set this paramter to True.
+    Returns:
+        SimpleITK.Image with isotropic spacing which occupies the same region in space as
+        the input image.
+    """
+
+def make_isotropic(
+    image,
+    interpolator=sitk.sitkLinear,
+    spacing=None,
+    default_value=0,
+    standardize_axes=False,
+):
+
+    original_spacing = image.GetSpacing()
+    # Image is already isotropic, just return a copy.
+    if all(spc == original_spacing[0] for spc in original_spacing):
+        return sitk.Image(image)
+    # Make image isotropic via resampling.
+    original_size = image.GetSize()
+    if spacing is None:
+        spacing = min(original_spacing)
+    new_spacing = [spacing] * image.GetDimension()
+    new_size = [
+        int(round(osz * ospc / spacing))
+        for osz, ospc in zip(original_size, original_spacing)
+    ]
+    new_direction = image.GetDirection()
+    new_origin = image.GetOrigin()
+    # Only need to standardize axes if user requested and the original
+    # axes were not standard.
+    if standardize_axes and not np.array_equal(
+        np.array(new_direction), np.identity(image.GetDimension()).ravel()
+    ):
+        new_direction = np.identity(image.GetDimension()).ravel()
+        # Compute bounding box for the original, non standard axes image.
+        boundary_points = []
+        for boundary_index in list(
+            itertools.product(*zip([0] * image.GetDimension(), image.GetSize()))
+        ):
+            boundary_points.append(image.TransformIndexToPhysicalPoint(boundary_index))
+        max_coords = np.max(boundary_points, axis=0)
+        min_coords = np.min(boundary_points, axis=0)
+        new_origin = min_coords
+        new_size = (((max_coords - min_coords) / spacing).round().astype(int)).tolist()
+    return sitk.Resample(
+        image,
+        new_size,
+        sitk.Transform(),
+        interpolator,
+        new_origin,
+        new_spacing,
+        new_direction,
+        default_value,
+        image.GetPixelID(),
+    )
+
 
 '''
 
 Function to get 3D masks for CT scans to segment out the exact tissue type.
 
 '''
-
 def get_proj_after_mask(img,max_i,min_i,hu_type):
     multiply= sitk.MultiplyImageFilter()
     if hu_type == 'Bone' or hu_type == 'bone' or hu_type == 'B':
@@ -73,8 +145,7 @@ def get_proj_after_mask(img,max_i,min_i,hu_type):
         img, lowerThreshold=200, upperThreshold=max_i,insideValue=1, outsideValue=0
         )
         op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
-        # path= img_n + r'_{0}_image.nii'.format(modality + '_' + type)
-        # save_as_gz(op_img,path)
+
     elif hu_type == 'Lean Tissue' or hu_type == 'lean' or hu_type == 'LT':
         seg = sitk.BinaryThreshold(
         img, lowerThreshold=-29, upperThreshold=150, insideValue=1, outsideValue=0
@@ -105,12 +176,16 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N
                 'std': sitk.StandardDeviationProjection,
                 'min': sitk.MinimumProjection,
                 'max': sitk.MaximumProjection}
+    
+    vol_img = make_isotropic(vol_img)
+
     paxis = 0
     rotation_axis = [0,0,1]
-    rotation_angles = np.linspace(0, 180, int(180.0/angle)+1) # angle range- [0, +180]; 15.0 degree 
-    rotation_center = vol_img.TransformContinuousIndexToPhysicalPoint([(index-1)/2.0 for index in vol_img.GetSize()])
+    rotation_angles = np.linspace(-np.pi/2, np.pi/2, int( (np.pi / (  ( angle / 180 ) * np.pi ) ) + 1 ) ) # angle range- [0, +180];
+    rotation_center = vol_img.TransformContinuousIndexToPhysicalPoint(np.array(vol_img.GetSize())/2.0) #[(index-1)/2.0 for index in vol_img.GetSize()])
 
     rotation_transform = sitk.VersorRigid3DTransform()
+    #rotation_transform = sitk.Euler3DTransform()
     rotation_transform.SetCenter(rotation_center)
 
     #Compute bounding box of rotating volume and the resampling grid structure
@@ -124,41 +199,37 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N
     all_points = []
     for ang in rotation_angles:
         rotation_transform.SetRotation(rotation_axis, ang)    
+        #rotation_transform.SetRotation(0,0,ang)    
         all_points.extend([rotation_transform.TransformPoint(pnt) for pnt in image_bounds])
         
     all_points = np.array(all_points)
     min_bounds = all_points.min(0)
     max_bounds = all_points.max(0)
-    
-    #path= img_n + r'_{0}_image.nii'.format(modality + '_' + t_type)
-    #save_as_gz(new_vol_img,path)       
 
 
     #resampling grid will be isotropic so no matter which direction we project to
     #the images we save will always be isotropic (required for vol_img formats that 
     #assume isotropy - jpg,png,tiff...)
 
+    print('index: ', np.array(vol_img.GetSize())/2.0)
+    print('physical rotation center: ', rotation_center)
+    # print('old size: ', vol_img.GetSize())
+    # print('max bound , min bound: ',max_bounds, ' ', min_bounds)
     new_spc = [np.min(vol_img.GetSpacing())]*3
     new_sz = [int(sz/spc + 0.5) for spc,sz in zip(new_spc, max_bounds-min_bounds)]
+    # print('new size: ', new_sz)
+    #new_sz = vol_img.GetSize()
+    pix_array=sitk.GetArrayFromImage(vol_img)
+    maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
     
     if modality == 'CT':
         default_pix_val=20
 
 
     elif modality == 'PET':
-        default_pix_val=20
+        default_pix_val=0
         #clipping intensities
 
-        # intensity_fil=sitk.IntensityWindowingImageFilter()
-        # intensity_fil.SetWindowMaximum=maxtensity
-        # intensity_fil.SetWindowMinimum=mintensity
-        # intensity_fil.SetOutputMaximum=50000
-        # intensity_fil.SetOutputMinimum=0
-        # vol_img= intensity_fil.Execute(vol_img)
-
-        pix_array=sitk.GetArrayFromImage(vol_img)
-        maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
-        #print(maxtensity,mintensity)
         vol_img = sitk.Cast(    
         sitk.IntensityWindowing(
             vol_img, windowMinimum=mintensity, windowMaximum=clip_value, outputMinimum=0.0, outputMaximum=255
@@ -166,24 +237,16 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N
         vol_img.GetPixelID(),
         )
 
-        # print('After clipping:')
-        # pix_array=sitk.GetArrayFromImage(vol_img)
-        # maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
-        # print(maxtensity,mintensity)
-
-
-    proj_images = []
-    i=0
-
     for ang in rotation_angles:
         rotation_transform.SetRotation(rotation_axis, ang) 
+        #rotation_transform.SetRotation(0,0,ang)
         resampled_image = sitk.Resample(image1=vol_img,
                                         size=new_sz,
                                         transform=rotation_transform,
                                         interpolator=sitk.sitkNearestNeighbor,
                                         outputOrigin=min_bounds,
-                                        outputSpacing=new_spc,
-                                        outputDirection = [1,0,0,0,1,0,0,0,1],
+                                        outputSpacing=vol_img.GetSpacing(),
+                                        outputDirection = vol_img.GetDirection(), #[1,0,0,0,1,0,0,0,1]
                                         defaultPixelValue = default_pix_val, 
                                         outputPixelType = vol_img.GetPixelID())
         if modality=='CT':
@@ -195,19 +258,10 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N
         extract_size = list(proj_image.GetSize())
         extract_size[paxis]=0 
         axes_shifted_pi=sitk.Extract(proj_image, extract_size) #flip axes
-        proj_images.append(axes_shifted_pi) #sitk.Extract(proj_image, extract_size)
 
-        #print('Size before saving: ',sitk.Extract(proj_image, extract_size).GetSize())
-        
         if save_img:
-            imgname= img_n + r'_{0}_image_{1}.png'.format(modality + '_' + t_type,ang)
-            save_projections(sitk.InvertIntensity(axes_shifted_pi,maximum=1), modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
-            #save_projections(axes_shifted_pi, modality, imgname, max_intensity=maxtensity, min_intensity=mintensity)
-        i+=1
+            imgname= img_n + r'_{0}_image_{1}'.format(modality + '_' + t_type,(180 * ang/np.pi) )
+            save_projections_as_png(sitk.InvertIntensity(axes_shifted_pi,maximum=1), imgname + '.png')
+            save_projections_as_nparr(sitk.InvertIntensity(axes_shifted_pi,maximum=1), imgname)
     print(f'Finished generating {int(180.0/angle)+1} - {ptype} intensity 2D projections from the {modality} volume image! ')
 
-#Testing
-# if __name__=="__main__":
-    # v_img = sitk.ReadImage(r"C:\Users\Audit\Uppsala - Masters Europe\Semester 3\Project in Image analysis - Software\UCAN-PET-CT-image-data-handling-pipeline\Task 2.1\Data\CTbrain50.nrrd")
-    # save_path=r"C:\Users\Audit\Uppsala - Masters Europe\Semester 3\Project in Image analysis - Software\UCAN-PET-CT-image-data-handling-pipeline\Task 2.1\Data\Sample 2D projections\CTbrain50"
-    # get_2D_projections(v_img,'CT','LT','max',15,img_n=save_path)
