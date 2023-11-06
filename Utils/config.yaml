@@ -3,7 +3,7 @@
 common:
     paths:
         source_path_wd : 'E:/U-CAN-Lymfom_A' #'/media/andres/T7 Shield1/U-CAN-Lymfom_A'
-        source_path_bd : 'F:/ucan_lymfom' #'/media/andres/T7 Shield/ucan_lymfom'
+        source_path_bd : '/media/andres/T7 Shield/ucan_lymfom' #'F:/ucan_lymfom'
 
 # Selection script config variables
 selection:
@@ -14,7 +14,7 @@ selection:
         incomplete_folders_filename_final : 'No_PTorCT_exams_from_U-CAN-Lymfom2.xlsx'
         selected_folders_beforefiltering_filename : 'Selected_exams_beforefiltering_from_U-CAN-Lymfom.xlsx'
         selected_folders_afterfiltering_filename : 'Selected_exams_afterfiltering_from_U-CAN-Lymfom.xlsx'
-        final_selected_images_filename : 'FinalSelected_exams_from_U-CAN-Lymfom.xlsx'
+        final_selected_images_filename : 'Excel_files/06_11_2023/Final_Selected_exams_from_U-CAN-Lymfom.xlsx'
         list_of_distorted_images_filename : 'Distorted_exams_from_U-CAN-Lymfom.xlsx'
 
 # Metadata extraction config variables

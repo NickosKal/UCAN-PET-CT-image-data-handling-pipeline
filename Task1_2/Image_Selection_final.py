@@ -17,7 +17,7 @@ import random
 dicom.config.convert_wrong_length_to_UN = True
 
 # Global path variables
-source_path = "/media/andres/T7 Shield/ucan_lymfom"
+source_path = "/media/andres/T7 Shield/ucan_lymfom/Excel_files/06_11_2023/"
 # source_path = "/media/andres/T7 Shield/U-CAN-Lymfom_A"
 # source_path = "F:/ucan_lymfom"
 #source_path = "D:\\ucan_lymfom"
@@ -331,7 +331,7 @@ if __name__ == '__main__':
     start = time.time()
     # Set of rules that affect our exam selection
     # Rules for CT
-    CT_ignore_folders = ["bone", "lung", "lunga"]
+    CT_ignore_folders = ["bone", "lung", "lunga", "leg"]
     CT_specifications_first_set = ["wb", "ax", "venfas"]
     CT_specifications_second_set = ["wb", "ven", "ax"]
     CT_specifications_third_set = ["standard", "ax"]
@@ -347,70 +347,71 @@ if __name__ == '__main__':
     PET_specifications_third_set = "vpfx"
 
     # Loading the dataset
-    print(str(datetime.now()), ": Reading through the directory tree")
-    directory_list = list()
-    for root, dirs, files in os.walk(source_path, topdown=False):
-        for name in dirs:
-            directory_list.append(os.path.join(root, name))
-            # print(os.path.join(root, name))
+    # print(str(datetime.now()), ": Reading through the directory tree")
+    # directory_list = list()
+    # for root, dirs, files in os.walk(source_path, topdown=False):
+    #     for name in dirs:
+    #         directory_list.append(os.path.join(root, name))
+    #         # print(os.path.join(root, name))
+    dataset = pd.read_excel(os.path.join(source_path, "data_ready_for_filtering.xlsx"))
 
     # Change the if statement in case of using a different disk
 
-    remove_list = ['PR----BONE-PULM-mm',
-                   'PR----Lunga-0.6-ax-mm',
-                   'PR----WB-Venfas-0.6-ax-mm',
-                   'PR----LUNG-1.25-AX-mm',
-                   'PR----WB-Ben-lunga-0.6-ax-mm',
-                   'PR----WB-Venfas-3-ax-mm',
-                   'PR----LUNG-1.25-AX-mm',
-                   'PR----BONE-1.25-AX-mm',
-                   'PR----LUNG-1.25-AX-mm',
-                   'PR----Lunga-0.6-ax-mm',
-                   'PR----SAVED-IMAGES-PR-mm',
-                   'PR----e1-QCFX-S-400-Static-mm',
-                   'PR----WB-Venfas-0.6-ax-mm',
-                   'PR----WB-VEN-AX-mm',
-                   'PR----WB-Ben-lunga-0.6-ax-mm',
-                   'PR----LUNG-1.25-AX-mm',
-                   'PR----THORAX-AX-mm',
-                   'PR----LUNG-1.25-AX-mm',
-                   'PR----THORAX-INANDAD-mm',
-                   'PR----KEY_IMAGES-PR-mm',
-                   'PR----SAVED-PR-mm',
-                   'Examinations that miss either CT or PET or both',
-                   'MR-',
-                   'sag',
-                   'cor',
-                   'ot-'
-                   ]
+    # remove_list = ['PR----BONE-PULM-mm',
+    #                'PR----Lunga-0.6-ax-mm',
+    #                'PR----WB-Venfas-0.6-ax-mm',
+    #                'PR----LUNG-1.25-AX-mm',
+    #                'PR----WB-Ben-lunga-0.6-ax-mm',
+    #                'PR----WB-Venfas-3-ax-mm',
+    #                'PR----LUNG-1.25-AX-mm',
+    #                'PR----BONE-1.25-AX-mm',
+    #                'PR----LUNG-1.25-AX-mm',
+    #                'PR----Lunga-0.6-ax-mm',
+    #                'PR----SAVED-IMAGES-PR-mm',
+    #                'PR----e1-QCFX-S-400-Static-mm',
+    #                'PR----WB-Venfas-0.6-ax-mm',
+    #                'PR----WB-VEN-AX-mm',
+    #                'PR----WB-Ben-lunga-0.6-ax-mm',
+    #                'PR----LUNG-1.25-AX-mm',
+    #                'PR----THORAX-AX-mm',
+    #                'PR----LUNG-1.25-AX-mm',
+    #                'PR----THORAX-INANDAD-mm',
+    #                'PR----KEY_IMAGES-PR-mm',
+    #                'PR----SAVED-PR-mm',
+    #                'Examinations that miss either CT or PET or both',
+    #                'MR-',
+    #                'sag',
+    #                'cor',
+    #                'ot-'
+    #                ]
                  
-    keep_list = ["CT-", "PT-"]
+    # keep_list = ["CT-", "PT-"]
 
-    find_dir_lst = []
-    rejection_lst = []
+    # find_dir_lst = []
+    # rejection_lst = []
 
-    for dir in directory_list:
-        dir = dir.replace('\\', '/')
-        if any(item.lower() in dir.lower() for item in keep_list) and all(
-                item.lower() not in dir.lower() for item in remove_list):
-            find_dir_lst.append(dir)
-        else:
-            rejection_lst.append(dir)
+    # for dir in directory_list:
+    #     dir = dir.replace('\\', '/')
+    #     if any(item.lower() in dir.lower() for item in keep_list) and all(
+    #             item.lower() not in dir.lower() for item in remove_list):
+    #         find_dir_lst.append(dir)
+    #     else:
+    #         rejection_lst.append(dir)
 
-    print(str(datetime.now()), ': Writing rejected image folders to excel file')
-    rejected_df = pd.DataFrame(rejection_lst, columns=['directory'])
-    rejected_df.to_excel(rejected_folder_path)
+    # print(str(datetime.now()), ': Writing rejected image folders to excel file')
+    # rejected_df = pd.DataFrame(rejection_lst, columns=['directory'])
+    # rejected_df.to_excel(rejected_folder_path)
 
     # Creating a dataframe out of the dataset with the required information that are need to proceed with the filtering.
-    print(str(datetime.now()), ": Loading the directory into Dataframe")
-    df = pd.DataFrame(find_dir_lst, columns=['directory'])
+    # print(str(datetime.now()), ": Loading the directory into Dataframe")
+    # df = pd.DataFrame(find_dir_lst, columns=['directory'])
 
-    print(str(datetime.now()), ': Writing source filtered image folders to excel file')
-    df.to_excel(source_filtered_folder_path)
+    # print(str(datetime.now()), ': Writing source filtered image folders to excel file')
+    # df.to_excel(source_filtered_folder_path)
 
-    exams_with_one_file = pd.read_excel("/media/andres/T7 Shield/Excel_Files_for_UCAN/Excel_files/01_11_2023/exams_with_one_file.xlsx")
+    exams_with_distorted_files = pd.read_excel("/media/andres/T7 Shield/ucan_lymfom/Excel_files/06_11_2023/exams_with_distorted_images_file.xlsx")
 
-    temporary_df = df[~df.directory.isin(exams_with_one_file.directory)]
+    temporary_df = dataset[~dataset.directory.isin(exams_with_distorted_files.directory)]
     print("--- INITIAL DATAFRAME ---")
     display_full(temporary_df.head(3))
     temporary_df[['source_directory', 'patient_directory', 'PET-CT_info']] = temporary_df['directory'].str.rsplit(pat='/', n=2, expand=True)
