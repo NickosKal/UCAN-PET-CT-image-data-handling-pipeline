@@ -19,7 +19,7 @@ CT(Grayscale) + PT(Color) = Overlap 2D img
 import SimpleITK as sitk
 import numpy as np
 import itertools
-
+from sklearn.preprocessing import normalize
 '''
 
 Function to save the 3d simpleitk objects to disk(deprecated)
@@ -38,15 +38,22 @@ Function to save 2d simpleitk projection objects as uint8 png images
 
 '''
 
-def save_projections_as_png(image,img_name):
+def save_projections_as_png(image,img_name, clip_value):
     writer = sitk.ImageFileWriter()
     #img=sitk.Extract(image, image.GetSize())
     writer.SetFileName(img_name)
+    # img_write=  sitk.Cast(    
+    #     sitk.IntensityWindowing(
+    #         image, windowMinimum=float(sitk.GetArrayFromImage(image).min()), windowMaximum=clip_value, outputMinimum=0.0, outputMaximum=255
+    #     ),
+    #     image.GetPixelID(),
+    #     )
     img_write= sitk.Flip(image, [False, True]) #flipping across y axis
     img_write=sitk.Cast(
-        sitk.RescaleIntensity(img_write),
+        sitk.RescaleIntensity(img_write), #sitk.RescaleIntensity()
         sitk.sitkUInt8
     )
+    img_write= sitk.InvertIntensity(img_write,maximum=255)
     writer.Execute(img_write)  #sitk.Cast(sitk.RescaleIntensity(img,outputMinimum=0,outputMaximum=15)
 
 '''
@@ -57,7 +64,11 @@ Function to save 2d simpleitk projection images as a numpy array
 
 def save_projections_as_nparr(image,img_name):
     arr= sitk.GetArrayFromImage(sitk.Flip(image, [False, True]))
-    np.save(img_name,arr)
+    minv,maxv= np.min(arr), np.max(arr)
+
+    # Perform min-max normalization
+    arr_normed = (arr - minv) / (maxv - minv)
+    np.save(img_name,np.array(arr_normed))
 
     """
     Many file formats (e.g. jpg, png,...) expect the pixels to be isotropic, same
@@ -170,14 +181,14 @@ def get_proj_after_mask(img,max_i,min_i,hu_type):
     return op_img
 
 
-def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N',save_img=True,img_n=''):
+def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10.0,t_type='N',save_img=True,img_n=''):
     projection = {'sum': sitk.SumProjection,
                 'mean':  sitk.MeanProjection,
                 'std': sitk.StandardDeviationProjection,
                 'min': sitk.MinimumProjection,
                 'max': sitk.MaximumProjection}
     
-    vol_img = make_isotropic(vol_img)
+    #vol_img = make_isotropic(vol_img)
 
     paxis = 0
     rotation_axis = [0,0,1]
@@ -211,8 +222,8 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N
     #the images we save will always be isotropic (required for vol_img formats that 
     #assume isotropy - jpg,png,tiff...)
 
-    print('index: ', np.array(vol_img.GetSize())/2.0)
-    print('physical rotation center: ', rotation_center)
+    # print('index: ', np.array(vol_img.GetSize())/2.0)
+    # print('physical rotation center: ', rotation_center)
     # print('old size: ', vol_img.GetSize())
     # print('max bound , min bound: ',max_bounds, ' ', min_bounds)
     new_spc = [np.min(vol_img.GetSpacing())]*3
@@ -221,7 +232,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N
     #new_sz = vol_img.GetSize()
     pix_array=sitk.GetArrayFromImage(vol_img)
     maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
-    
+    # print(maxtensity,mintensity)
     if modality == 'CT':
         default_pix_val=20
 
@@ -229,13 +240,16 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N
     elif modality == 'PET':
         default_pix_val=0
         #clipping intensities
-
-        vol_img = sitk.Cast(    
-        sitk.IntensityWindowing(
-            vol_img, windowMinimum=mintensity, windowMaximum=clip_value, outputMinimum=0.0, outputMaximum=255
-        ),
-        vol_img.GetPixelID(),
-        )
+        clamper = sitk.ClampImageFilter()
+        clamper.SetLowerBound(0)
+        clamper.SetUpperBound(15)
+        vol_img=clamper.Execute(vol_img)
+        # vol_img = sitk.Cast(    
+        # sitk.IntensityWindowing(
+        #     vol_img, windowMinimum=mintensity, windowMaximum=clip_value, outputMinimum=0.0, outputMaximum=255
+        # ),
+        # vol_img.GetPixelID(),
+        # )
 
     for ang in rotation_angles:
         rotation_transform.SetRotation(rotation_axis, ang) 
@@ -245,7 +259,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N
                                         transform=rotation_transform,
                                         interpolator=sitk.sitkNearestNeighbor,
                                         outputOrigin=min_bounds,
-                                        outputSpacing=vol_img.GetSpacing(),
+                                        outputSpacing=new_spc,
                                         outputDirection = vol_img.GetDirection(), #[1,0,0,0,1,0,0,0,1]
                                         defaultPixelValue = default_pix_val, 
                                         outputPixelType = vol_img.GetPixelID())
@@ -261,7 +275,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10000.0,t_type='N
 
         if save_img:
             imgname= img_n + r'_{0}_image_{1}'.format(modality + '_' + t_type,(180 * ang/np.pi) )
-            save_projections_as_png(sitk.InvertIntensity(axes_shifted_pi,maximum=1), imgname + '.png')
-            save_projections_as_nparr(sitk.InvertIntensity(axes_shifted_pi,maximum=1), imgname)
+            save_projections_as_png(axes_shifted_pi, imgname + '.png', clip_value) #sitk.InvertIntensity(axes_shifted_pi,maximum=1)
+            save_projections_as_nparr(axes_shifted_pi, imgname)
     print(f'Finished generating {int(180.0/angle)+1} - {ptype} intensity 2D projections from the {modality} volume image! ')
 
