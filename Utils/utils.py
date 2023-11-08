@@ -252,18 +252,20 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
                                         outputDirection = vol_img.GetDirection(), #[1,0,0,0,1,0,0,0,1]
                                         defaultPixelValue = default_pix_val, 
                                         outputPixelType = vol_img.GetPixelID())
+        """
         if modality=='CT':
             masked_resampled_image=get_proj_after_mask(resampled_image,maxtensity,mintensity,t_type)
         else:
             masked_resampled_image=resampled_image
+        """
 
-        proj_image = projection[ptype](masked_resampled_image, paxis)
+        proj_image = projection[ptype](resampled_image, paxis)
         extract_size = list(proj_image.GetSize())
         extract_size[paxis]=0 
         axes_shifted_pi=sitk.Extract(proj_image, extract_size) #flip axes
 
         if save_img:
-            imgname= img_n + r'_{0}_image_{1}'.format(modality + '_' + t_type,(180 * ang/np.pi) )
+            imgname= img_n + r'{0}'.format((180 * ang/np.pi))
             save_projections_as_png(axes_shifted_pi, imgname + '.png', invert_intensity) #sitk.InvertIntensity(axes_shifted_pi,maximum=1)
             save_projections_as_nparr(axes_shifted_pi, imgname, invert_intensity)
     print(f'Finished generating {int(180.0/angle)+1} - {ptype} intensity 2D projections from the {modality} volume image! ')
