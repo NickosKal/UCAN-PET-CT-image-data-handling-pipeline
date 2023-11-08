@@ -226,7 +226,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
         default_pix_val=20
 
 
-    elif modality == 'PET':
+    else:
         default_pix_val=0
         #clipping intensities
         clamper = sitk.ClampImageFilter()
