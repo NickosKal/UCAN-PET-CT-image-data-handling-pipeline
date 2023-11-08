@@ -20,25 +20,28 @@ import SimpleITK as sitk
 import numpy as np
 import itertools
 from sklearn.preprocessing import normalize
-'''
 
-Function to save the 3d simpleitk objects to disk(deprecated)
 
-'''
+def save_as_gz(vimg,path):  
+    '''
 
-def save_as_gz(vimg,path):
+    Function to save the 3d simpleitk objects to disk(deprecated)
+
+    '''
     writer = sitk.ImageFileWriter()
     writer.SetFileName(path)
     writer.Execute(vimg)
 
 
-'''
 
-Function to save 2d simpleitk projection objects as uint8 png images
 
-'''
+def save_projections_as_png(image,img_name, invert = True):
+    '''
 
-def save_projections_as_png(image,img_name, clip_value):
+    Function to save 2d simpleitk projection objects as uint8 png images
+
+    '''
+
     writer = sitk.ImageFileWriter()
     #img=sitk.Extract(image, image.GetSize())
     writer.SetFileName(img_name)
@@ -53,23 +56,45 @@ def save_projections_as_png(image,img_name, clip_value):
         sitk.RescaleIntensity(img_write), #sitk.RescaleIntensity()
         sitk.sitkUInt8
     )
-    img_write= sitk.InvertIntensity(img_write,maximum=255)
+    if invert:
+        img_write   = sitk.InvertIntensity(img_write,maximum=255)
+    else:
+        pass
     writer.Execute(img_write)  #sitk.Cast(sitk.RescaleIntensity(img,outputMinimum=0,outputMaximum=15)
 
-'''
 
-Function to save 2d simpleitk projection images as a numpy array
 
-'''
+def save_projections_as_nparr(image,img_name, invert = True):
+    '''
 
-def save_projections_as_nparr(image,img_name):
-    arr= sitk.GetArrayFromImage(sitk.Flip(image, [False, True]))
-    minv,maxv= np.min(arr), np.max(arr)
+    Function to save 2d simpleitk projection images as a numpy array
+
+    '''
+
+    img = sitk.Flip(image, [False, True])
+
+    if invert:
+        img= sitk.InvertIntensity(img,maximum=255)
+    else:
+        pass
+    
+    arr= sitk.GetArrayFromImage(img)
 
     # Perform min-max normalization
+
+    minv,maxv= np.min(arr), np.max(arr)
     arr_normed = (arr - minv) / (maxv - minv)
     np.save(img_name,np.array(arr_normed))
 
+
+def make_isotropic(
+    image,
+    interpolator=sitk.sitkLinear,
+    spacing=None,
+    default_value=0,
+    standardize_axes=False,
+):
+    
     """
     Many file formats (e.g. jpg, png,...) expect the pixels to be isotropic, same
     spacing for all axes. Saving non-isotropic data in these formats will result in
@@ -91,14 +116,6 @@ def save_projections_as_nparr(image,img_name):
         SimpleITK.Image with isotropic spacing which occupies the same region in space as
         the input image.
     """
-
-def make_isotropic(
-    image,
-    interpolator=sitk.sitkLinear,
-    spacing=None,
-    default_value=0,
-    standardize_axes=False,
-):
 
     original_spacing = image.GetSpacing()
     # Image is already isotropic, just return a copy.
@@ -181,7 +198,7 @@ def get_proj_after_mask(img,max_i,min_i,hu_type):
     return op_img
 
 
-def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10.0,t_type='N',save_img=True,img_n=''):
+def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, clip_value=15.0, t_type='N',save_img=True,img_n=''):
     projection = {'sum': sitk.SumProjection,
                 'mean':  sitk.MeanProjection,
                 'std': sitk.StandardDeviationProjection,
@@ -242,7 +259,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10.0,t_type='N',s
         #clipping intensities
         clamper = sitk.ClampImageFilter()
         clamper.SetLowerBound(0)
-        clamper.SetUpperBound(15)
+        clamper.SetUpperBound(clip_value)
         vol_img=clamper.Execute(vol_img)
         # vol_img = sitk.Cast(    
         # sitk.IntensityWindowing(
@@ -275,7 +292,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,clip_value=10.0,t_type='N',s
 
         if save_img:
             imgname= img_n + r'_{0}_image_{1}'.format(modality + '_' + t_type,(180 * ang/np.pi) )
-            save_projections_as_png(axes_shifted_pi, imgname + '.png', clip_value) #sitk.InvertIntensity(axes_shifted_pi,maximum=1)
-            save_projections_as_nparr(axes_shifted_pi, imgname)
+            save_projections_as_png(axes_shifted_pi, imgname + '.png', invert_intensity) #sitk.InvertIntensity(axes_shifted_pi,maximum=1)
+            save_projections_as_nparr(axes_shifted_pi, imgname, invert_intensity)
     print(f'Finished generating {int(180.0/angle)+1} - {ptype} intensity 2D projections from the {modality} volume image! ')
 
