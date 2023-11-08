@@ -10,17 +10,17 @@ selection:
     filenames:
         rejected_folder_filename : 'Rejected_exams_from_U-CAN-Lymfom.xlsx'
         sourcefiltered_folder_filename : 'SourceFiltered_exams_from_U-CAN-Lymfom.xlsx'
-        incomplete_folders_filename_initial : 'No_PTorCT_exams_from_U-CAN-Lymfom1.xlsx'
-        incomplete_folders_filename_final : 'No_PTorCT_exams_from_U-CAN-Lymfom2.xlsx'
-        selected_folders_beforefiltering_filename : 'Selected_exams_beforefiltering_from_U-CAN-Lymfom.xlsx'
-        selected_folders_afterfiltering_filename : 'Selected_exams_afterfiltering_from_U-CAN-Lymfom.xlsx'
+        incomplete_folders_filename_initial : 'Excel_files/06_11_2023/No_PT_or_CT_exams_from_U-CAN-Lymfom_before_selection_process.xlsx'
+        incomplete_folders_filename_final : 'Excel_files/06_11_2023/No_PT_or_CT_exams_from_U-CAN-Lymfom_after_selection_process.xlsx'
+        selected_folders_beforefiltering_filename : 'Excel_files/06_11_2023/Selected_exams_after_filtering_from_U-CAN-Lymfom.xlsx'
+        selected_folders_afterfiltering_filename : 'Excel_files/06_11_2023/Selected_exams_before_filtering_from_U-CAN-Lymfom.xlsx'
         final_selected_images_filename : 'Excel_files/06_11_2023/Final_Selected_exams_from_U-CAN-Lymfom.xlsx'
-        list_of_distorted_images_filename : 'Distorted_exams_from_U-CAN-Lymfom.xlsx'
+        list_of_distorted_images_filename : 'Excel_files/06_11_2023/exams_with_distorted_images_file.xlsx'
 
 # Metadata extraction config variables
 metadata:
     filenames:
-        final_selected_images_filename : 'Finalized_dataset.xlsx'
+        final_selected_images_filename : 'Excel_files/06_11_2023/Finalized_dataset.xlsx'
 
 
 # Resampling Task config variables
