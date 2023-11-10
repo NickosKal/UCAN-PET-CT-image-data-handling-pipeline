@@ -1,7 +1,7 @@
 import yaml
 import os
 import sys
-
+from PIL import Image
 import SimpleITK as sitk
 import numpy as np
 import pandas as pd
@@ -81,6 +81,24 @@ def save_as_gz(vimg,path):
     writer = sitk.ImageFileWriter()
     writer.SetFileName(path)
     writer.Execute(vimg)
+
+def create_collage(path_c, path_s, save_path):
+    '''
+
+    Function to save simple collage from 0.0 and -90.0 degree png images
+
+    '''
+
+    image1 = Image.open(path_c)
+    image2 = Image.open(path_s)
+    collage = Image.new('RGB', (image1.size[0]*2, image1.size[1]))
+    # Paste the first image onto the collage
+    collage.paste(image1, (0, 0))
+    # Paste the second image onto the collage
+    collage.paste(image2, (image1.size[0], 0))
+
+    # Save the collage
+    collage.save(save_path)
 
 def save_projections_as_png(image,img_name, invert = True):
     '''
