@@ -1,3 +1,4 @@
 /media/andres/T7 Shield/ucan_lymfom/ASPTCTX0001_npr988864921432-20220428/PT-20220428-120103-3.8_WB_F18_FDG_VENFAS-QCFX-S_400_M.Free-2.8000mm <---- SUV is included
 /media/andres/T7 Shield/ucan_lymfom/ASPTCTX0001_npr988864921432-20220125/PT-20220125-104104-3.8_WB_F18_FDG_VENFAS-QCFX-S_400_M.Free-2.8000mm <---- SUV in included
 
+/media/andres/T7 Shield1/UCAN_project/Resampled_Projections/lpr415675513429/20190320 CT projections are wrong
