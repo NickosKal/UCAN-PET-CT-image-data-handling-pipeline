@@ -32,14 +32,13 @@ k_fold = 15
 learning_rate = 0
 weight_decay = 0.001
 batch_size_train = 13
+args = {"num_workers": 2,
+        "batch_size_val": 25}
 
+df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_classification.xlsx")
 
-df = pd.read_excel("dataset with suv ct paths and sex diagnosis and mtv")
-df_rot_mips = pd.read_excel("dataset with mips")
-df_rot_mips_collages = pd.read_excel("dataset with collages")
-
-path_output = "where we want to store the outputs"
-outcome = ["sex"] # what outcome we want to predict
+path_output = "/media/andres/T7 Shield1/UCAN_project/Results/classification"
+outcome = ["sex"] # diagnosis
 pre_trained_weights = False
 
 for k in tqdm(range(k_fold)):
@@ -76,17 +75,14 @@ for k in tqdm(range(k_fold)):
         
         df_train = df[~df.scan_date.isin(df_val.scan_date)].reset_index(drop=True)
 
-        df_train_new = df_rot_mips_collages[df_rot_mips_collages.scan_date.isin(df_train.scan_date)].reset_index(drop=True)
-        df_val_new = df_rot_mips_collages[df_rot_mips_collages.scan_date.isin(df_val.scan_date)].reset_index(drop=True)
-
         print("Number of patients in Training set: ", len(df_train))
         print("Number of patients in Validation set: ", len(df_val))
 
-        class_freq = np.unique(df_train_new["sex"], return_counts=True)[1]
+        class_freq = np.unique(df_train["sex"], return_counts=True)[1]
         class_weights = torch.tensor([float(class_freq[0]/np.sum(class_freq)), float(class_freq[1]/np.sum(class_freq))]).to(device)
         loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
         
-        train_files, train_loader = prepare_data(args, df_train_new, batch_size_train, shuffle=True, label=outcome)
+        train_files, train_loader = prepare_data(args, df_train, batch_size_train, shuffle=True, label=outcome)
 
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
@@ -94,7 +90,7 @@ for k in tqdm(range(k_fold)):
             print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}")
 
             if (epoch + 1) % val_interval == 0:
-                metric_values, best_metric_new = validation_classification(args, k, epoch, optimizer, model, df_val_new, device, best_metric, metric_values, path_output, outcome)
+                metric_values, best_metric_new = validation_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_output, outcome)
                 best_metric = best_metric_new
 
             np.save(os.path.join(path_output, "CV_ " + str(k) + "/AUC.npy"), metric_values)

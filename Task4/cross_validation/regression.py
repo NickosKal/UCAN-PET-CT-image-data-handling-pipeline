@@ -40,15 +40,13 @@ k_fold = 15
 learning_rate = 0
 weight_decay = 0.001
 batch_size_train = 13
+args = {"num_workers": 2,
+        "batch_size_val": 25}
 
+df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_regression.xlsx")
 
-df = pd.read_excel("path to df")
-df_rot_mips_collages = pd.read_excel("path to rot mips collages")
-include_angels = [90]
-df_rot_mips_collages = df_rot_mips_collages[df_rot_mips_collages.angle.isin(include_angels)].reset_index(drop=True)
-
-path_output = "path of output"
-outcome = "age"
+path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression"
+outcome = ["age"] # "mtv"
 pre_trained_weights = False
 
 for k in tqdm(range(k_fold)):
@@ -88,13 +86,10 @@ for k in tqdm(range(k_fold)):
             df_val = df[factor*k:factor*k+factor].reset_index(drop=True)
         df_train = df[~df.scan_date.isin(df_val.scan_date)].reset_index(drop=True)
 
-        df_train_new = df_rot_mips_collages[df_rot_mips_collages.scan_date.isin(df_train.scan_date)].reset_index(drop=True)
-        df_val_new = df_rot_mips_collages[df_rot_mips_collages.scan_date.isin(df_val.scan_date)].reset_index(drop=True)
-
         print("Number of patients in Training set: ", len(df_train))
         print("Number of patients in Valdation set: ", len(df_val))
 
-        train_files, train_loader = prepare_data(args, df_train_new, batch_size_train, shuffle=True, label=outcome)
+        train_files, train_loader = prepare_data(args, df_train, batch_size_train, shuffle=True, label=outcome)
 
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
@@ -105,7 +100,7 @@ for k in tqdm(range(k_fold)):
 
             #Validation
             if (epoch + 1) % val_interval == 0:
-                metric_values, best_metric_new = validation_regression(args, k, epoch, optimizer, model, df_val_new, device, best_metric, metric_values, metric_values_r_squared, path_output, outcome, loss_function)
+                metric_values, best_metric_new = validation_regression(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, metric_values_r_squared, path_output, outcome, loss_function)
 
                 best_metric = best_metric_new
 

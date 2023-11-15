@@ -85,7 +85,8 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
     tn = 0
     pred_prob = []
     GT = []
-    metric_values
+    metric_values = []
+
     for scan_date in tqdm(scan_dates):
         #Patient-wise Validation
         df_temp = df_val[df_val["scan_date"]==scan_date].reset_index(drop=True)
@@ -124,12 +125,12 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
             scan_prediction = 0
             #scan_pred_prob = np.mean(pred_prob_female)
         scan_pred_prob = np.mean(pred_prob_male)
-        scan_GT = labels[0]
+        scan_GT = labels[0] # type: ignore
 
         #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [scan_prediction], 'prediction_probability (sex)': [scan_pred_prob]})
         df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [scan_prediction], 'prediction_probability (diagnosis)': [scan_pred_prob]})
 
-        df_performance = df_performance.append(df_temp_new, ignore_index=True)
+        df_performance = df_performance.append(df_temp_new, ignore_index=True) # type: ignore
 
         pred_prob.append(scan_pred_prob)
         GT.append(scan_GT)
@@ -259,7 +260,7 @@ def validation_regression(args, k, epoch, optimizer, model, df_val, device, best
             loss_temp.append(loss.data.cpu().numpy())
 
         scan_prediction = np.mean(prediction_temp)
-        scan_GT = labels[0]
+        scan_GT = labels[0] # type: ignore
         scan_loss = np.mean(loss_temp)
 
         #print("GT: ", scan_GT)
@@ -270,7 +271,7 @@ def validation_regression(args, k, epoch, optimizer, model, df_val, device, best
         #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction (lean_volume (L))': [scan_prediction]})
         #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'lesion_count': [scan_prediction]})
 
-        df_performance = df_performance.append(df_temp_new, ignore_index=True)
+        df_performance = df_performance.append(df_temp_new, ignore_index=True) # type: ignore
 
         prediction.append(scan_prediction)
         GT.append(scan_GT)
