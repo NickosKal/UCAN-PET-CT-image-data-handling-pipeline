@@ -95,6 +95,13 @@ for k in tqdm(range(k_fold)):
         
         if not os.path.exists(path_output+"CV_"+str(k)+'/Network_Weights/'):
             os.makedirs(path_output+"CV_"+str(k)+'/Network_Weights/')
+
+        if not os.path.exists(path_output+"CV_"+str(k)+'/Metrics/'):
+            os.makedirs(path_output+"CV_"+str(k)+'/Metrics/')
+        
+        if not os.path.exists(path_output+"CV_"+str(k)+'/MIPs/'):
+            os.makedirs(path_output+"CV_"+str(k)+'/MIPs/')
+
         #os.mkdir("dir path", k)
 
         # factor = round(df.shape[0]/k_fold)
