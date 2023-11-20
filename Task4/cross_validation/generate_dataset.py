@@ -68,14 +68,14 @@ class ImageDataset(Dataset):
         CT_adipose_new = torch.unsqueeze(CT_adipose, 0)
         CT_air_new = torch.unsqueeze(CT_air, 0)
 
-        multi_channel_input = torch.cat((SUV_MIP_new, SUV_bone_new, SUV_lean_new, SUV_air_new, SUV_adipose_new, SUV_air_new, CT_MIP_new, CT_bone_new, CT_lean_new, CT_adipose_new, CT_air_new))
-
+        #multi_channel_input = torch.cat((SUV_MIP_new, SUV_bone_new, SUV_lean_new, SUV_adipose_new, SUV_air_new, CT_MIP_new, CT_bone_new, CT_lean_new, CT_adipose_new, CT_air_new), dim=0)
+        multi_channel_input = torch.cat((SUV_MIP_new,SUV_MIP_new), dim=0)
         return multi_channel_input, label
     
 def prepare_data(args, df_train, batch_size, shuffle=None, label=None):
     if shuffle==True:
         df_train_shuffled = df_train.sample(frac=1).reset_index(drop=True)
-    elif shuffle==False:
+    else:
         df_train_shuffled = df_train
     
     SUV_MIP_train = df_train_shuffled["SUV_MIP"].tolist()
@@ -93,14 +93,16 @@ def prepare_data(args, df_train, batch_size, shuffle=None, label=None):
         label_train = df_train_shuffled["sex"].tolist()
     elif label == "diagnosis":
         label_train = df_train_shuffled["diagnosis"].tolist()
-    elif label == "age":
-        label_train = df_train_shuffled["age"].tolist()
+    elif label == "patient_age":
+        label_train = df_train_shuffled["patient_age"].tolist()
     elif label == "MTV":
         label_train = df_train_shuffled["MTV (ml)"].tolist()
     elif label == "lean_volume":
         label_train = df_train_shuffled["lean_volume (L)"].tolist()
     elif label == "lesion_count":
         label_train = df_train_shuffled["lesion_count"].tolist()
+    else:
+        label_train = df_train_shuffled["age"].tolist()
      
     train_files = [
         {"SUV_MIP": SUV_MIP_name, "SUV_bone": SUV_bone_name, "SUV_lean": SUV_lean_name, "SUV_adipose": SUV_adipose_name, "SUV_MIP": SUV_air_name, 
@@ -110,6 +112,6 @@ def prepare_data(args, df_train, batch_size, shuffle=None, label=None):
     ]
 
     train_ds = ImageDataset(SUV_MIP_train, SUV_bone_train, SUV_lean_train, SUV_adipose_train, SUV_air_train, CT_MIP_train, CT_bone_train, CT_lean_train, CT_adipose_train, CT_air_train, label_train)
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=args.num_workers)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=args["num_workers"])
 
     return train_files, train_loader

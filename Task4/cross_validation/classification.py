@@ -26,7 +26,7 @@ from monai.utils.misc import set_determinism
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from generate_dataset import prepare_data
 import sys
-from utils import train_classification, validation_classification, plot_auc
+from Task4.utils import train_classification, validation_classification, plot_auc
 
 k_fold = 15
 learning_rate = 0

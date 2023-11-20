@@ -22,7 +22,7 @@ from scipy.ndimage.measurements import label
 import nibabel as nib
 import scipy.ndimage
 from sklearn.metrics import mean_absolute_error, r2_score
-from cross_validation.generate_dataset import prepare_data
+from Task4.cross_validation.generate_dataset import prepare_data
 
 def make_dirs(path, k):
     path_CV = os.path.join(path, "CV_" + str(k))
@@ -60,7 +60,7 @@ def train_classification(model, train_loader, optimizer, loss_function, device, 
         #output_log_probs = torch.log_softmax(output_logits, dim=1)
         #print(m(outputs))
         loss = loss_function(output_logits, labels)
-        #print("loss: ", loss)
+        print("loss: ", loss)
         #print("labels: ", labels)
         loss.backward()
         optimizer.step()
@@ -91,7 +91,7 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         #Patient-wise Validation
         df_temp = df_val[df_val["scan_date"]==scan_date].reset_index(drop=True)
         pat_id = np.unique(df_temp["pat_ID"])
-        val_files, val_loader = prepare_data(args, df_temp, args.batch_size_val, shuffle=False, label=outcome)
+        val_files, val_loader = prepare_data(args, df_temp, args["batch_size_val"], shuffle=False, label=outcome)
 
         prediction_list = []
         pred_prob_female = []
@@ -186,18 +186,23 @@ def huber_loss_function(predictions, targets, delta=5):
     loss = torch.where(errors < delta, quadratic_term, linear_term)
     return loss.mean()
 
-def train_regression(model, train_loader, optimizer, loss_function, device, loss_values):
+def train_regression(model, train_files, train_loader, optimizer, loss_function, device, loss_values):
     model.train()
     epoch_loss = 0
     step = 0
+    i = 0
+    #print('train_regression')
     for inputs, labels in tqdm(train_loader):
+        print(train_files[i]['SUV_MIP'])
         #labels = labels.type(torch.LongTensor)
         #print(inputs.shape)
         step += 1
+        i += 1
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
+        #print('1')
         output_logits = model(inputs).view(-1)
-
+        #print('output_logits: ', output_logits)
         output_logits = output_logits.float()  # Convert logits to torch.float32
         labels = labels.float()
         #print("output: ", output_logits)
@@ -205,7 +210,7 @@ def train_regression(model, train_loader, optimizer, loss_function, device, loss
 
         loss = loss_function(output_logits, labels)
         #loss = loss_function(predicted_output, labels)
-        
+        print('loss: ', loss)
         #loss = huber_loss_function(output_logits, labels)
 
         loss.backward()
@@ -217,7 +222,7 @@ def train_regression(model, train_loader, optimizer, loss_function, device, loss
     return epoch_loss, loss_values
 
 def validation_regression(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, metric_values_r_squared, path_Output, outcome, loss_function):
-    df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction (age)'])
+    df_performance = pd.DataFrame(columns=['patient_ID', 'scan_date', 'GT', 'prediction (age)'])
     #df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction (MTV (ml))'])
     #df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction (lean_volume (L))'])
     #df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'lesion_count'])
@@ -231,9 +236,9 @@ def validation_regression(args, k, epoch, optimizer, model, df_val, device, best
     for scan_date in tqdm(scan_dates):
         #Patient-wise Validation
         df_temp = df_val[df_val["scan_date"]==scan_date].reset_index(drop=True)
-        pat_id = np.unique(df_temp["pat_ID"])
+        pat_id = np.unique(df_temp["patient_ID"])
         #val_files, val_loader = prepare_data(args, df_temp, shuffle=False, label="age")
-        val_files, val_loader = prepare_data(args, df_temp, args.batch_size_val, shuffle=False, label=outcome)
+        val_files, val_loader = prepare_data(args, df_temp, args["batch_size_val"], shuffle=False, label=outcome)
 
         prediction_temp = []
         loss_temp = []
@@ -266,12 +271,13 @@ def validation_regression(args, k, epoch, optimizer, model, df_val, device, best
         #print("GT: ", scan_GT)
         #print("Prediction: ", scan_prediction)
 
-        df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction (age)': [scan_prediction]})
+        df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction (age)': [scan_prediction]})
         #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction (MTV (ml))': [scan_prediction]})
         #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction (lean_volume (L))': [scan_prediction]})
         #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'lesion_count': [scan_prediction]})
 
-        df_performance = df_performance.append(df_temp_new, ignore_index=True) # type: ignore
+        #df_performance = df_performance.append(df_temp_new, ignore_index=True) # type: ignore
+        df_performance = pd.concat([df_performance, df_temp_new], ignore_index=True)
 
         prediction.append(scan_prediction)
         GT.append(scan_GT)

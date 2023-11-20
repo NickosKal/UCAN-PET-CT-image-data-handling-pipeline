@@ -1,5 +1,6 @@
 import os
 import shutil
+from tabnanny import verbose
 import tempfile
 import matplotlib.pyplot as plt
 import PIL
@@ -24,44 +25,53 @@ from monai.transforms.spatial.array import RandFlip,RandRotate,RandZoom
 from monai.transforms.intensity.array import ScaleIntensity
 
 from monai.utils.misc import set_determinism
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+torch.cuda.empty_cache()
 from tqdm import tqdm
 from generate_dataset import prepare_data
 
 import sys
-from utils import plot, train_regression, validation_regression
+
+parent_dir = os.path.abspath('../')
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+
+from Task4.utils import plot, train_regression, validation_regression
 
 import torch
 import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import densenet121
 
-k_fold = 15
-learning_rate = 0
+k_fold = 10
+learning_rate = 1e-3
 weight_decay = 0.001
-batch_size_train = 13
-args = {"num_workers": 2,
-        "batch_size_val": 25}
+batch_size_train = 1#6
+args = {"num_workers": 4,
+        "batch_size_val": 1} #25
 
 df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_regression.xlsx")
+df_sorted = df.sort_values(by="patient_ID")
+df_clean = df_sorted.drop(columns="Unnamed: 0").reset_index(drop=True)
 
 path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression"
-outcome = ["age"] # "mtv"
+outcome = "patient_age" # "mtv"
 pre_trained_weights = False
 
 for k in tqdm(range(k_fold)):
     if k >= 0:
         print(f"Cross validation for fold {k}")
-        max_epochs = 200
-        val_interval = 5
-        best_metric = "best_metric_classification"
-        best_metric_epoch = "best_metrix_epoch"
+        max_epochs = 20
+        val_interval = 1 #5
+        best_metric = 100000000000 #1000000
+        best_metric_epoch = -1
         metric_values = []
         metric_values_r_squared = []
         print("Network Initialization")
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
-        model = DenseNet121(spatial_dims=10, in_channels=10, out_channels=10, init_features=64, dropout_prob=0.25).to(device)
+        print(torch.cuda.is_available())
+        print(device)
+        model = DenseNet121(spatial_dims=2, in_channels=2, out_channels=1, dropout_prob=0.25).to(device)
         
         if pre_trained_weights:
             # Use it in case we have pre trained weights
@@ -76,26 +86,42 @@ for k in tqdm(range(k_fold)):
         loss_function = torch.nn.SmoothL1Loss()
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_epochs)
+        
+        if not os.path.exists("dir path"+str(k)):
+            os.makedirs("dir path"+str(k))
+        #os.mkdir("dir path", k)
 
-        os.mkdir("dir path", k)
+        # factor = round(df.shape[0]/k_fold)
+        # if k == (k_fold - 1):
+        #     df_val = df[factor*k:].reset_index(drop=True)
+        # else:
+        #     df_val = df[factor*k:factor*k+factor].reset_index(drop=True)
+        # df_train = df[~df.scan_date.isin(df_val.scan_date)].reset_index(drop=True)
+
+        #patients_for_train = df_clean[:int(df_clean.shape[0] * 0.7)].patient_ID.tolist()
+        #df_train = df_clean[df_clean.patient_ID.isin(patients_for_train)]
+        #df_val = df_clean[~df_clean.patient_ID.isin(patients_for_train)]
 
         factor = round(df.shape[0]/k_fold)
         if k == (k_fold - 1):
-            df_val = df[factor*k:].reset_index(drop=True)
+            patients_for_val = df_clean[factor*k:].patient_ID.tolist()
+            df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
         else:
-            df_val = df[factor*k:factor*k+factor].reset_index(drop=True)
-        df_train = df[~df.scan_date.isin(df_val.scan_date)].reset_index(drop=True)
+            patients_for_val = df_clean[factor*k:factor*k+factor].patient_ID.tolist()
+            df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+
+        df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
 
         print("Number of patients in Training set: ", len(df_train))
         print("Number of patients in Valdation set: ", len(df_val))
 
-        train_files, train_loader = prepare_data(args, df_train, batch_size_train, shuffle=True, label=outcome)
+        train_files, train_loader = prepare_data(args, df_train, batch_size_train, shuffle=False, label=outcome)
 
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
 
             #Training
-            epoch_loss, train_loss = train_regression(model, train_loader, optimizer, loss_function, device, train_loss)
+            epoch_loss, train_loss = train_regression(model, train_files, train_loader, optimizer, loss_function, device, train_loss)
             print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}")
 
             #Validation
