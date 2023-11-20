@@ -46,15 +46,21 @@ from torchvision.models import densenet121
 k_fold = 10
 learning_rate = 1e-3
 weight_decay = 0.001
-batch_size_train = 1#6
+batch_size_train = 10
 args = {"num_workers": 4,
         "batch_size_val": 1} #25
 
-df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_regression.xlsx")
+#df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_regression.xlsx")
+df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_regression_v2.xlsx")
 df_sorted = df.sort_values(by="patient_ID")
-df_clean = df_sorted.drop(columns="Unnamed: 0").reset_index(drop=True)
 
-path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression"
+try:
+    df_clean = df_sorted.drop(columns="Unnamed: 0").reset_index(drop=True)
+except:
+    df_clean = df_sorted.copy()
+
+#path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression"
+path_output = "/home/ashish/Ashish/UCAN/Results/regression/"
 outcome = "patient_age" # "mtv"
 pre_trained_weights = False
 
@@ -69,9 +75,9 @@ for k in tqdm(range(k_fold)):
         metric_values_r_squared = []
         print("Network Initialization")
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(torch.cuda.is_available())
+        #print(torch.cuda.is_available())
         print(device)
-        model = DenseNet121(spatial_dims=2, in_channels=2, out_channels=1, dropout_prob=0.25).to(device)
+        model = DenseNet121(spatial_dims=2, in_channels=10, out_channels=1, dropout_prob=0.25).to(device)
         
         if pre_trained_weights:
             # Use it in case we have pre trained weights
@@ -87,8 +93,8 @@ for k in tqdm(range(k_fold)):
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_epochs)
         
-        if not os.path.exists("dir path"+str(k)):
-            os.makedirs("dir path"+str(k))
+        if not os.path.exists(path_output+"CV_"+str(k)+'/Network_Weights/'):
+            os.makedirs(path_output+"CV_"+str(k)+'/Network_Weights/')
         #os.mkdir("dir path", k)
 
         # factor = round(df.shape[0]/k_fold)

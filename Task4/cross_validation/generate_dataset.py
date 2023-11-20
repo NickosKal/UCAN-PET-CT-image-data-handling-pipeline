@@ -68,8 +68,8 @@ class ImageDataset(Dataset):
         CT_adipose_new = torch.unsqueeze(CT_adipose, 0)
         CT_air_new = torch.unsqueeze(CT_air, 0)
 
-        #multi_channel_input = torch.cat((SUV_MIP_new, SUV_bone_new, SUV_lean_new, SUV_adipose_new, SUV_air_new, CT_MIP_new, CT_bone_new, CT_lean_new, CT_adipose_new, CT_air_new), dim=0)
-        multi_channel_input = torch.cat((SUV_MIP_new,SUV_MIP_new), dim=0)
+        multi_channel_input = torch.cat((SUV_MIP_new, SUV_bone_new, SUV_lean_new, SUV_adipose_new, SUV_air_new, CT_MIP_new, CT_bone_new, CT_lean_new, CT_adipose_new, CT_air_new), dim=0)
+        #multi_channel_input = torch.cat((SUV_MIP_new,SUV_MIP_new), dim=0)
         return multi_channel_input, label
     
 def prepare_data(args, df_train, batch_size, shuffle=None, label=None):
@@ -105,7 +105,7 @@ def prepare_data(args, df_train, batch_size, shuffle=None, label=None):
         label_train = df_train_shuffled["age"].tolist()
      
     train_files = [
-        {"SUV_MIP": SUV_MIP_name, "SUV_bone": SUV_bone_name, "SUV_lean": SUV_lean_name, "SUV_adipose": SUV_adipose_name, "SUV_MIP": SUV_air_name, 
+        {"SUV_MIP": SUV_MIP_name, "SUV_bone": SUV_bone_name, "SUV_lean": SUV_lean_name, "SUV_adipose": SUV_adipose_name, "SUV_air": SUV_air_name, 
          "CT_MIP": CT_MIP_name, "CT_bone": CT_bone_name, "CT_lean": CT_lean_name, "CT_adipose": CT_adipose_name, "CT_air": CT_air_name, "label": label_name}
          for SUV_MIP_name, SUV_bone_name, SUV_lean_name, SUV_adipose_name, SUV_air_name, CT_MIP_name, CT_bone_name, CT_lean_name, CT_adipose_name, CT_air_name, label_name in
          zip(SUV_MIP_train, SUV_bone_train, SUV_lean_train, SUV_adipose_train, SUV_air_train, CT_MIP_train, CT_bone_train, CT_lean_train, CT_adipose_train, CT_air_train, label_train)

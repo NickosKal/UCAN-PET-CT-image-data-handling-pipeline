@@ -13,13 +13,13 @@ from monai.data.utils import list_data_collate, decollate_batch
 from monai.data.dataloader import DataLoader
 from monai.data.image_dataset import ImageDataset
 from tqdm import tqdm
-import cc3d
+#import cc3d
 import SimpleITK as sitk
 import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.ndimage.measurements import label
-import nibabel as nib
+#import nibabel as nib
 import scipy.ndimage
 from sklearn.metrics import mean_absolute_error, r2_score
 from Task4.cross_validation.generate_dataset import prepare_data
@@ -60,7 +60,7 @@ def train_classification(model, train_loader, optimizer, loss_function, device, 
         #output_log_probs = torch.log_softmax(output_logits, dim=1)
         #print(m(outputs))
         loss = loss_function(output_logits, labels)
-        print("loss: ", loss)
+        #print("loss: ", loss)
         #print("labels: ", labels)
         loss.backward()
         optimizer.step()
@@ -193,7 +193,7 @@ def train_regression(model, train_files, train_loader, optimizer, loss_function,
     i = 0
     #print('train_regression')
     for inputs, labels in tqdm(train_loader):
-        print(train_files[i]['SUV_MIP'])
+        #print(train_files[i]['SUV_MIP'])
         #labels = labels.type(torch.LongTensor)
         #print(inputs.shape)
         step += 1
@@ -210,7 +210,7 @@ def train_regression(model, train_files, train_loader, optimizer, loss_function,
 
         loss = loss_function(output_logits, labels)
         #loss = loss_function(predicted_output, labels)
-        print('loss: ', loss)
+        #print('loss: ', loss)
         #loss = huber_loss_function(output_logits, labels)
 
         loss.backward()
