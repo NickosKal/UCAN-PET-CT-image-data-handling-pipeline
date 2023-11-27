@@ -16,6 +16,7 @@ from tqdm import tqdm
 #import cc3d
 import SimpleITK as sitk
 import cv2
+os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.ndimage.measurements import label
