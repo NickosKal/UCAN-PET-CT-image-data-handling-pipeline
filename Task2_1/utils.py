@@ -81,7 +81,7 @@ def save_projections_as_nparr(image,img_name, invert = True):
     arr= sitk.GetArrayFromImage(img)
 
     # Perform min-max normalization
-
+    
     minv,maxv= np.min(arr), np.max(arr)
     arr_normed = (arr - minv) / (maxv - minv)
     np.save(img_name,np.array(arr_normed))
@@ -161,12 +161,13 @@ def make_isotropic(
     )
 
 
-'''
 
-Function to get 3D masks for CT scans to segment out the exact tissue type.
-
-'''
 def get_proj_after_mask(img,max_i,min_i,hu_type):
+    '''
+
+    Function to get 3D masks for CT scans to segment out the exact tissue type.
+
+    '''
     multiply= sitk.MultiplyImageFilter()
     if hu_type == 'Bone' or hu_type == 'bone' or hu_type == 'B':
         seg = sitk.BinaryThreshold(
@@ -250,11 +251,8 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
     pix_array=sitk.GetArrayFromImage(vol_img)
     maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
     # print(maxtensity,mintensity)
-    if modality == 'CT':
-        default_pix_val=20
 
-
-    else: #modality == 'PET':
+    if modality == 'PET':
         default_pix_val=0
         #clipping intensities
         clamper = sitk.ClampImageFilter()
@@ -267,6 +265,10 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
         # ),
         # vol_img.GetPixelID(),
         # )
+    else:
+        default_pix_val=20
+
+
 
     for ang in rotation_angles:
         rotation_transform.SetRotation(rotation_axis, ang) 
