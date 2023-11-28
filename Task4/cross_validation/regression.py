@@ -1,3 +1,4 @@
+from gc import callbacks
 import os
 import shutil
 from tabnanny import verbose
@@ -16,7 +17,6 @@ from monai.data.image_dataset import ImageDataset
 from monai.metrics.rocauc import ROCAUCMetric
 from monai.networks.nets.densenet import DenseNet121
 from tqdm import tqdm
-
 from monai.transforms.post.array import Activations, AsDiscrete
 from monai.transforms.utility.array import EnsureChannelFirst
 from monai.transforms.compose import Compose
@@ -43,31 +43,35 @@ import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import densenet121
 
+experiment = 1
 k_fold = 10
-learning_rate = 1e-3
-weight_decay = 0.001
-batch_size_train = 10
-args = {"num_workers": 4,
+learning_rate = 5e-5
+weight_decay = 5e-5
+batch_size_train = 6
+args = {"num_workers": 2,
         "batch_size_val": 1} #25
 
-#df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_regression.xlsx")
-df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_regression_v2.xlsx")
-df_sorted = df.sort_values(by="patient_ID")
+df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_regression_v1.xlsx")
+checkpoint_path = "/media/andres/T7 Shield/best_model_77.pth.tar"
+# df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_regression_v2.xlsx")
+path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression/"
+# path_output = "/home/ashish/Ashish/UCAN/Results/regression/"
+outcome = "patient_age" # "mtv"
+pre_trained_weights = True
 
+
+df_sorted = df.sort_values(by="patient_ID")
 try:
     df_clean = df_sorted.drop(columns="Unnamed: 0").reset_index(drop=True)
 except:
     df_clean = df_sorted.copy()
 
-#path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression"
-path_output = "/home/ashish/Ashish/UCAN/Results/regression/"
-outcome = "patient_age" # "mtv"
-pre_trained_weights = False
+output_path = os.path.join(path_output, "Experiment_" + str(experiment) + "/")
 
 for k in tqdm(range(k_fold)):
-    if k >= 0:
+    if k == 0:
         print(f"Cross validation for fold {k}")
-        max_epochs = 20
+        max_epochs = 1000
         val_interval = 1 #5
         best_metric = 100000000000 #1000000
         best_metric_epoch = -1
@@ -81,10 +85,10 @@ for k in tqdm(range(k_fold)):
         
         if pre_trained_weights:
             # Use it in case we have pre trained weights
-            # print("Checkpoint Loading for Cross Validation: {}".format(k))
+            print("Checkpoint Loading for Cross Validation: {}".format(k))
             # checkpoint_path = load_checkpoint(args, k)
-            # checkpoint = torch.load(checkpoint_path)
-            # model.load_state_dict(checkpoint['net'])
+            checkpoint = torch.load(checkpoint_path)
+            model.load_state_dict(checkpoint['net'])
             pass
         else:
             print("Training from Scratch!") 
@@ -93,14 +97,14 @@ for k in tqdm(range(k_fold)):
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_epochs)
         
-        if not os.path.exists(path_output+"CV_"+str(k)+'/Network_Weights/'):
-            os.makedirs(path_output+"CV_"+str(k)+'/Network_Weights/')
+        if not os.path.exists(output_path + "CV_" + str(k) + '/Network_Weights/'):
+            os.makedirs(output_path + "CV_" + str(k) + '/Network_Weights/')
 
-        if not os.path.exists(path_output+"CV_"+str(k)+'/Metrics/'):
-            os.makedirs(path_output+"CV_"+str(k)+'/Metrics/')
+        if not os.path.exists(output_path + "CV_" + str(k) + '/Metrics/'):
+            os.makedirs(output_path + "CV_" + str(k) + '/Metrics/')
         
-        if not os.path.exists(path_output+"CV_"+str(k)+'/MIPs/'):
-            os.makedirs(path_output+"CV_"+str(k)+'/MIPs/')
+        if not os.path.exists(output_path + "CV_" + str(k) + '/MIPs/'):
+            os.makedirs(output_path + "CV_" + str(k) + '/MIPs/')
 
         #os.mkdir("dir path", k)
 
@@ -139,14 +143,14 @@ for k in tqdm(range(k_fold)):
 
             #Validation
             if (epoch + 1) % val_interval == 0:
-                metric_values, best_metric_new = validation_regression(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, metric_values_r_squared, path_output, outcome, loss_function)
+                metric_values, best_metric_new = validation_regression(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, metric_values_r_squared, output_path, outcome, loss_function)
 
                 best_metric = best_metric_new
 
             #Save and plot
-            np.save(os.path.join(path_output, "CV_" + str(k) + "/MAE.npy"), metric_values)
+            np.save(os.path.join(output_path, "CV_" + str(k) + "/MAE.npy"), metric_values)
 
-            path_MAE = os.path.join(path_output, "CV_" + str(k), "epoch_vs_MAE.jpg")
+            path_MAE = os.path.join(output_path, "CV_" + str(k), "epoch_vs_MAE.jpg")
 
             if len(metric_values) > 2:
                 plot(metric_values, path_MAE, "MAE")

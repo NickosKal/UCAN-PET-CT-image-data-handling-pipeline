@@ -10,31 +10,37 @@ selection:
     filenames:
         rejected_folder_filename : 'Rejected_exams_from_U-CAN-Lymfom.xlsx'
         sourcefiltered_folder_filename : 'SourceFiltered_exams_from_U-CAN-Lymfom.xlsx'
-        incomplete_folders_filename_initial : 'Excel_files/06_11_2023/No_PT_or_CT_exams_from_U-CAN-Lymfom_before_selection_process.xlsx'
-        incomplete_folders_filename_final : 'Excel_files/06_11_2023/No_PT_or_CT_exams_from_U-CAN-Lymfom_after_selection_process.xlsx'
-        selected_folders_beforefiltering_filename : 'Excel_files/06_11_2023/Selected_exams_after_filtering_from_U-CAN-Lymfom.xlsx'
-        selected_folders_afterfiltering_filename : 'Excel_files/06_11_2023/Selected_exams_before_filtering_from_U-CAN-Lymfom.xlsx'
-        final_selected_images_filename : 'Excel_files/06_11_2023/Final_Selected_exams_from_U-CAN-Lymfom.xlsx'
-        list_of_distorted_images_filename : 'Excel_files/06_11_2023/exams_with_distorted_images_file.xlsx'
+        incomplete_folders_filename_initial : 'Excel_files/No_PT_or_CT_exams_from_U-CAN-Lymfom_before_selection_process.xlsx'
+        incomplete_folders_filename_final : 'Excel_files/No_PT_or_CT_exams_from_U-CAN-Lymfom_after_selection_process.xlsx'
+        selected_folders_beforefiltering_filename : 'Excel_files/Selected_exams_after_filtering_from_U-CAN-Lymfom.xlsx'
+        selected_folders_afterfiltering_filename : 'Excel_files/Selected_exams_before_filtering_from_U-CAN-Lymfom.xlsx'
+        final_selected_images_filename : 'Excel_files/Final_Selected_exams_from_U-CAN-Lymfom.xlsx'
+        list_of_distorted_images_filename : 'Excel_files/exams_with_distorted_images_file.xlsx'
+        misclassified_files: 'Excel_files/MisclassifiedSelected_files.xlsx'
 
 # Metadata extraction config variables
 metadata:
     filenames:
-        final_selected_images_filename : 'Excel_files/06_11_2023/Finalized_dataset.xlsx'
+        final_selected_images_filename : 'Excel_files/Finalized_dataset.xlsx'
 
 
 # Resampling Task config variables
 resampling:
+    path_to_save: "/media/andres/T7 Shield1/UCAN_project/Resampled_SUV_CT/"
     voxel_spacing : [2.0364201068878174, 2.0364201068878174, 3.0]
     image_size : [256,256,256]
 
 # Projection config variables
 projections:
     paths:
-        destination_path : 'Selected_for_UCAN_project/2dprojections' 
+        raw_projections_path : '/media/andres/T7 Shield1/UCAN_project/2D_projections/raw_projections/'
+        reshaped_projections_path: '/media/andres/T7 Shield1/UCAN_project/2D_projections/reshaped_projections/'
     variables:
         modality : ['CT', 'PT', 'SUV']
         tissue_type : ['LT', 'AT', 'LT' , 'B' , 'N']
         projection_type : ['sum', 'min', 'max', 'mean', 'std']
         angles : [0, 90]
+
+# Excel files in the metadata disk 
+
 ...
