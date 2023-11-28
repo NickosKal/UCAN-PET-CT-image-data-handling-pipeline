@@ -5,12 +5,6 @@ import SimpleITK as sitk
 import matplotlib.pyplot as plt
 
 
-def read_dicom(path: str):
-    reader = sitk.ImageSeriesReader()
-    dicom_names = reader.GetGDCMSeriesFileNames(path)
-    reader.SetFileNames(dicom_names)
-    vol_img = reader.Execute()
-    return vol_img
 
 def save_projections_as_png(image,img_name, invert = True):
     '''
@@ -55,43 +49,7 @@ def save_projections_as_nparr(image,img_name, invert = True):
     np.save(img_name,np.array(arr_normed))
 
 
-def get_proj_after_mask(img,max_i,min_i,hu_type):
-    '''
-
-    Function to get 3D masks for CT scans to segment out specific HU values.
-
-    '''
-    multiply= sitk.MultiplyImageFilter()
-    if hu_type == 'Bone' or hu_type == 'bone' or hu_type == 'B':
-        seg = sitk.BinaryThreshold(
-        img, lowerThreshold=200, upperThreshold=max_i,insideValue=1, outsideValue=0
-        )
-        op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
-
-    elif hu_type == 'Lean Tissue' or hu_type == 'lean' or hu_type == 'LT':
-        seg = sitk.BinaryThreshold(
-        img, lowerThreshold=-29, upperThreshold=150, insideValue=1, outsideValue=0
-        )
-        op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
-
-    elif hu_type == 'Adipose' or hu_type == 'adipose' or hu_type == 'AT':
-        seg = sitk.BinaryThreshold(
-        img, lowerThreshold=-199, upperThreshold=-30, insideValue=1, outsideValue=0
-        )
-        op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
-        
-    elif hu_type == 'Air' or hu_type == 'A':
-        seg = sitk.BinaryThreshold(
-        img, lowerThreshold=min_i, upperThreshold=-191, insideValue=1, outsideValue=0
-        )
-        op_img= multiply.Execute(img,sitk.Cast(seg,img.GetPixelID()))
-    
-    else:
-        op_img=img
-    
-    return op_img
-
-def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, clip_value=15.0, t_type='N',save_img=True,img_n=''):
+def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True,min_clip_value=0, max_clip_value=15.0,save_png=True,img_n=''):
     ''' 
     Main function to get the 2D projections. \n
     \n
@@ -103,12 +61,6 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
                 'std': sitk.StandardDeviationProjection, \n
                 'min': sitk.MinimumProjection, \n
                 'max': sitk.MaximumProjection} \n
-    Segmentation type:     \n
-        Bone - 'Bone' or 'bone' or 'B' \n
-        Lean Tissue- 'Lean Tissue' or 'lean' or 'LT' \n
-        Adipose- 'Adipose' or 'adipose' or 'AT' \n
-        Air- 'Air' or 'A' \n
-        Anything else returns the projection without any masks\n
     '''
     projection = {'sum': sitk.SumProjection,
                 'mean':  sitk.MeanProjection,
@@ -120,7 +72,9 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
 
     paxis = 0
     rotation_axis = [0,0,1]
-    rotation_angles = np.linspace(-np.pi/2, np.pi/2, int( (np.pi / (  ( angle / 180 ) * np.pi ) ) + 1 ) ) # angle range- [0, +180];
+    rotation_angles=[]
+    rotation_angles.append(angle)
+    #rotation_angles = np.linspace(-np.pi/2, np.pi/2, int( (np.pi / (  ( angle / 180 ) * np.pi ) ) + 1 ) ) # angle range- [0, +180];
     rotation_center = vol_img.TransformContinuousIndexToPhysicalPoint(np.array(vol_img.GetSize())/2.0) #[(index-1)/2.0 for index in vol_img.GetSize()])
 
     rotation_transform = sitk.VersorRigid3DTransform()
@@ -163,8 +117,8 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
         default_pix_val=0
         #clipping intensities
         clamper = sitk.ClampImageFilter()
-        clamper.SetLowerBound(0)
-        clamper.SetUpperBound(clip_value)
+        clamper.SetLowerBound(min_clip_value)
+        clamper.SetUpperBound(max_clip_value)
         vol_img=clamper.Execute(vol_img)
 
     for ang in rotation_angles:
@@ -179,20 +133,17 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
                                         outputDirection = vol_img.GetDirection(), #[1,0,0,0,1,0,0,0,1]
                                         defaultPixelValue = default_pix_val, 
                                         outputPixelType = vol_img.GetPixelID())
-        if modality=='CT':
-            masked_resampled_image=get_proj_after_mask(resampled_image,maxtensity,mintensity,t_type)
-        else:
-            masked_resampled_image=resampled_image
 
-        proj_image = projection[ptype](masked_resampled_image, paxis)
+        proj_image = projection[ptype](resampled_image, paxis)
         extract_size = list(proj_image.GetSize())
         extract_size[paxis]=0 
         axes_shifted_pi=sitk.Extract(proj_image, extract_size) #flip axes
 
-        if save_img:
-            imgname= img_n + r'_{0}_image_{1}'.format(modality + '_' + t_type,(180 * ang/np.pi) )
+        imgname= img_n + r'_{0}_image_{1}'.format(modality,(180 * ang/np.pi) )
+        save_projections_as_nparr(axes_shifted_pi, imgname, invert_intensity)
+        if save_png:
             save_projections_as_png(axes_shifted_pi, imgname + '.png', invert_intensity) #sitk.InvertIntensity(axes_shifted_pi,maximum=1)
-            save_projections_as_nparr(axes_shifted_pi, imgname, invert_intensity)
+            
     print(f'Finished generating {int(180.0/angle)+1} - {ptype} intensity 2D projections from the {modality} volume image! ')
 
 
@@ -200,24 +151,22 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
 if __name__=="__main__":
     
     #for example - r'\..\_SUV_CT\201XXXX\CT.nii.gz'
-    DICOM_PATH = '' 
+    VOL_IMG_PATH = r'' 
 
     # Testing for CT
     # MODA='CT'
-    # T_TYPE='B' 
     # PTYPE='mean'
 
     # Testing for PET
     MODA='PET' 
-    T_TYPE='A' 
     PTYPE='max' 
 
     #for example - r'\..\2dprojections\20171207'
     # The function adds .png at the end for each angular projection image/np arr
     save_path=r''
-    
-    volimg=read_dicom(DICOM_PATH)
 
+    #Reading the 3D file first
+    volimg=sitk.ReadImage(VOL_IMG_PATH)
     get_2D_projections(volimg,MODA,ptype=PTYPE,angle=45,clip_value=15.0,img_n=save_path)
 
 
