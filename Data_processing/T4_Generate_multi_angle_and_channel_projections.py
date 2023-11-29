@@ -11,13 +11,15 @@ from datetime import datetime
 import traceback
 from PIL import Image
 
-%env SITK_SHOW_COMMAND '/home/andres/Downloads/Slicer-5.4.0-linux-amd64/Slicer'
+# %env SITK_SHOW_COMMAND '/home/andres/Downloads/Slicer-5.4.0-linux-amd64/Slicer'
 
 import sys
 
-parent_dir = os.path.abspath('..')
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
+# Get the home directory
+home_directory = os.path.expanduser('~')
+
+# Append the parent directory to the Python path
+sys.path.append(os.path.join(home_directory, 'VSCode', 'UCAN-PET-CT-image-data-handling-pipeline'))
 
 from Utils import utils
 
@@ -25,6 +27,7 @@ config = utils.read_config()
 
 raw_projections_path = config["projections"]["paths"]["raw_projections_path"]
 resampled_SUV_CT_path = config['resampling']['path_to_save']
+reshaped_projections_path = "/media/andres/T7 Shield1/UCAN_project/2D_projections/reshaped_projections/"
 
 # Create a dataframe with the paths from the niftii files to be used later to generate the 2D projections
 resampled_directory_list = []
@@ -34,7 +37,6 @@ for dirs, subdirs, files in os.walk(resampled_SUV_CT_path):
         file_path = str(os.path.join(dirs, file))
         file_path = file_path.replace('\\','/')
         resampled_directory_list.append(file_path)
-        print(file_path)
 
 resampled_directory_df = pd.DataFrame(resampled_directory_list, columns=['directory'])
 resampled_directory_df[['source_directory', 'patient_directory', 'scan_date', 'SUV_CT']] = resampled_directory_df['directory'].str.rsplit(pat='/', n=3, expand=True)
@@ -118,3 +120,112 @@ df_for_collages["CT_air"] = df_for_collages["CT_air"].str.replace("SUV_air", "CT
 
 df_for_collages = df_for_collages[["patient_ID", "scan_date", "SUV_MIP", "CT_MIP", "SUV_bone", "CT_bone", "SUV_lean", "CT_lean", "SUV_adipose", "CT_adipose", "SUV_air", "CT_air", "angle"]]
 df_for_collages.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_raw_projections.xlsx", index=False)
+
+cropped_array = np.zeros((580, 256))
+
+for row, image in df_for_collages.iterrows():
+
+    save_path_temp = os.path.join(reshaped_projections_path, str(image["patient_ID"]), str(image["scan_date"]))
+    if not os.path.exists(save_path_temp):
+        os.makedirs(save_path_temp)
+
+    SUV_MIP = np.load(image["SUV_MIP"])
+    size = SUV_MIP.shape[0]
+
+    if size <= 580:
+        temp_pad_int = (580 - size)//2
+        temp_pad_float = (580 - size)/2
+        pad_from_top = temp_pad_int
+        pad_from_bottom = temp_pad_int
+
+        if temp_pad_int < temp_pad_float:
+            pad_from_top = temp_pad_int + 1
+
+        result = np.pad(SUV_MIP, ((pad_from_top, pad_from_bottom), (0,0)))
+        np.save(os.path.join(save_path_temp, "SUV_MIP" + ".npy"), result)
+
+        SUV_bone = np.load(image["SUV_bone"])
+        result = np.pad(SUV_MIP, ((pad_from_top, pad_from_bottom), (0,0)))
+        np.save(os.path.join(save_path_temp, "SUV_bone" + ".npy"), result)
+
+        SUV_lean = np.load(image["SUV_lean"])
+        result = np.pad(SUV_MIP, ((pad_from_top, pad_from_bottom), (0,0)))
+        np.save(os.path.join(save_path_temp, "SUV_lean" + ".npy"), result)
+
+        SUV_adipose = np.load(image["SUV_adipose"])
+        result = np.pad(SUV_MIP, ((pad_from_top, pad_from_bottom), (0,0)))
+        np.save(os.path.join(save_path_temp, "SUV_adipose" + ".npy"), result)
+
+        SUV_air = np.load(image["SUV_air"])
+        result = np.pad(SUV_MIP, ((pad_from_top, pad_from_bottom), (0,0)))
+        np.save(os.path.join(save_path_temp, "SUV_air" + ".npy"), result)
+        
+        CT_MIP = np.load(image["CT_MIP"])
+        result = np.pad(SUV_MIP, ((pad_from_top, pad_from_bottom), (0,0)))
+        np.save(os.path.join(save_path_temp, "CT_MIP" + ".npy"), result)
+
+        CT_bone = np.load(image["CT_bone"])
+        result = np.pad(SUV_MIP, ((pad_from_top, pad_from_bottom), (0,0)))
+        np.save(os.path.join(save_path_temp, "CT_bone" + ".npy"), result)
+
+        CT_lean = np.load(image["CT_lean"])
+        result = np.pad(SUV_MIP, ((pad_from_top, pad_from_bottom), (0,0)))
+        np.save(os.path.join(save_path_temp, "CT_lean" + ".npy"), result)
+
+        CT_adipose = np.load(image["CT_adipose"])
+        result = np.pad(SUV_MIP, ((pad_from_top, pad_from_bottom), (0,0)))
+        np.save(os.path.join(save_path_temp, "CT_adipose" + ".npy"), result)
+
+        CT_air = np.load(image["CT_air"])
+        result = np.pad(SUV_MIP, ((pad_from_top, pad_from_bottom), (0,0)))
+        np.save(os.path.join(save_path_temp, "CT_air" + ".npy"), result)
+
+    else:
+        temp_crop_int = (size - 580)//2
+        temp_crop_float = (size - 580)/2
+        crop_from_top = temp_crop_int
+        crop_from_bottom = crop_from_top + 580
+
+        if temp_crop_int < temp_crop_float:
+            crop_from_top = temp_crop_int + 1
+
+        cropped_array = SUV_MIP[crop_from_top:crop_from_bottom, :]
+        np.save(os.path.join(save_path_temp, "SUV_MIP" + ".npy"), cropped_array)
+
+        SUV_bone = np.load(image["SUV_bone"])
+        cropped_array = SUV_bone[crop_from_top:crop_from_bottom, :]
+        np.save(os.path.join(save_path_temp, "SUV_bone" + ".npy"), cropped_array)
+
+        SUV_lean = np.load(image["SUV_lean"])
+        cropped_array = SUV_lean[crop_from_top:crop_from_bottom, :]
+        np.save(os.path.join(save_path_temp, "SUV_lean" + ".npy"), cropped_array)
+
+        SUV_adipose = np.load(image["SUV_adipose"])
+        cropped_array = SUV_adipose[crop_from_top:crop_from_bottom, :]
+        np.save(os.path.join(save_path_temp, "SUV_adipose" + ".npy"), cropped_array)
+
+        SUV_air = np.load(image["SUV_air"])
+        cropped_array = SUV_air[crop_from_top:crop_from_bottom, :]
+        np.save(os.path.join(save_path_temp, "SUV_air" + ".npy"), cropped_array)
+        
+        CT_MIP = np.load(image["CT_MIP"])
+        cropped_array = CT_MIP[crop_from_top:crop_from_bottom, :]
+        np.save(os.path.join(save_path_temp, "CT_MIP" + ".npy"), cropped_array)
+
+        CT_bone = np.load(image["CT_bone"])
+        cropped_array = CT_bone[crop_from_top:crop_from_bottom, :]
+        np.save(os.path.join(save_path_temp, "CT_bone" + ".npy"), cropped_array)
+
+        CT_lean = np.load(image["CT_lean"])
+        cropped_array = CT_lean[crop_from_top:crop_from_bottom, :]
+        np.save(os.path.join(save_path_temp, "CT_lean" + ".npy"), cropped_array)
+
+        CT_adipose = np.load(image["CT_adipose"])
+        cropped_array = CT_adipose[crop_from_top:crop_from_bottom, :]
+        np.save(os.path.join(save_path_temp, "CT_adipose" + ".npy"), cropped_array)
+
+        CT_air = np.load(image["CT_air"])
+        cropped_array = CT_air[crop_from_top:crop_from_bottom, :]
+        np.save(os.path.join(save_path_temp, "CT_air" + ".npy"), cropped_array)
+
+df_for_collages.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_reshaped_projections.xlsx", index=False)
