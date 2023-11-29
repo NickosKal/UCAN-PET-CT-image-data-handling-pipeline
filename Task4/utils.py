@@ -86,12 +86,12 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
     tn = 0
     pred_prob = []
     GT = []
-    metric_values = []
+    #metric_values = []
 
     for scan_date in tqdm(scan_dates):
         #Patient-wise Validation
         df_temp = df_val[df_val["scan_date"]==scan_date].reset_index(drop=True)
-        pat_id = np.unique(df_temp["pat_ID"])
+        pat_id = np.unique(df_temp["patient_ID"])
         val_files, val_loader = prepare_data(args, df_temp, args["batch_size_val"], shuffle=False, label=outcome)
 
         prediction_list = []
@@ -129,9 +129,11 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         scan_GT = labels[0] # type: ignore
 
         #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [scan_prediction], 'prediction_probability (sex)': [scan_pred_prob]})
-        df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [scan_prediction], 'prediction_probability (diagnosis)': [scan_pred_prob]})
+        df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [scan_prediction], 'prediction_probability (diagnosis)': [scan_pred_prob]})
 
-        df_performance = df_performance.append(df_temp_new, ignore_index=True) # type: ignore
+        #df_performance = df_performance.append(df_temp_new, ignore_index=True) # type: ignore
+        df_performance = pd.concat([df_performance, df_temp_new], ignore_index=True)
+
 
         pred_prob.append(scan_pred_prob)
         GT.append(scan_GT)
