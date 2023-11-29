@@ -7,6 +7,13 @@ import cv2
 import os
 
 import sys
+
+# Get the home directory
+home_directory = os.path.expanduser('~')
+
+# Append the parent directory to the Python path
+sys.path.append(os.path.join(home_directory, 'VSCode', 'UCAN-PET-CT-image-data-handling-pipeline'))
+
 from Utils import utils
 
 def display_full(x):
@@ -18,8 +25,8 @@ def display_full(x):
         print(x)
 
 output_path = "/media/andres/T7 Shield1/UCAN_project/collages/"
-current_path = "/media/andres/T7 Shield1/UCAN_project/2D_projections/raw_projections/"
-df_for_collages = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/df_of_raw_projections.xlsx")
+current_path = "/media/andres/T7 Shield1/UCAN_project/2D_projections/reshaped_projections/"
+df_for_collages = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/df_of_reshaped_projections.xlsx")
 df_for_collages.head()
 
 df_for_collages["scan_date"] = df_for_collages["scan_date"].astype(str)

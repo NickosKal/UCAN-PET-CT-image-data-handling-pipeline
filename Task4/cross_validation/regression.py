@@ -43,16 +43,16 @@ import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import densenet121
 
-experiment = 1
+experiment = 2
 k_fold = 10
-learning_rate = 5e-5
-weight_decay = 5e-5
+learning_rate = 5e-4
+weight_decay = 5e-4
 batch_size_train = 6
 args = {"num_workers": 2,
         "batch_size_val": 1} #25
 
 df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_regression_v1.xlsx")
-checkpoint_path = "/media/andres/T7 Shield/best_model_77.pth.tar"
+checkpoint_path = "/media/andres/T7 Shield1/UCAN_project/Results/regression/Experiment_1/CV_0/Network_Weights/best_model_775.pth.tar"
 # df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_regression_v2.xlsx")
 path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression/"
 # path_output = "/home/ashish/Ashish/UCAN/Results/regression/"
