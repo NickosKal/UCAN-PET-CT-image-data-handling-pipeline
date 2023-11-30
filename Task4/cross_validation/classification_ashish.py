@@ -33,7 +33,7 @@ if parent_dir not in sys.path:
 
 from Task4.utils import train_classification, validation_classification, plot_auc
 
-experiment = "3"
+experiment = "4"
 k_fold = 4
 learning_rate = 1e-4
 weight_decay = 1e-5
@@ -42,7 +42,7 @@ args = {"num_workers": 4,
         "batch_size_val": 1}
 
 #df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_classification.xlsx")
-df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_classification_v2.xlsx")
+df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/dataset_for_training_classification_v2.xlsx")
 print(df.shape)
 df_sorted = df.sort_values(by="patient_ID")
 
@@ -55,8 +55,8 @@ except:
 path_output = "/home/ashish/Ashish/UCAN/Results/classification/experiment_" + experiment + "/"
 outcome = "sex" # diagnosis
 
-checkpoint_path = "/home/ashish/Ashish/UCAN/pretrained_model_autoPet/classification_sex/best_model_10.pth.tar"
-pre_trained_weights = True
+#checkpoint_path = "/home/ashish/Ashish/UCAN/pretrained_model_autoPet/classification_sex/best_model_10.pth.tar"
+pre_trained_weights = False
 
 for k in tqdm(range(k_fold)):
     if k >= 0:
@@ -72,10 +72,10 @@ for k in tqdm(range(k_fold)):
         
         if pre_trained_weights:
             # Load pre trained weights
-            print("Checkpoint Loading for Cross Validation: {}".format(k))
+            #print("Checkpoint Loading for Cross Validation: {}".format(k))
             # checkpoint_path = load_checkpoint(args, k)
-            checkpoint = torch.load(checkpoint_path)
-            model.load_state_dict(checkpoint["net"])
+            #checkpoint = torch.load(checkpoint_path)
+            #model.load_state_dict(checkpoint["net"])
             pass
         else:
             print("Training from Scratch!!")
