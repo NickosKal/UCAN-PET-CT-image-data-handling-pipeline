@@ -13,12 +13,12 @@ pd.set_option('display.max_colwidth', None)
 pd.set_option('display.max_columns', None)
 dicom.config.convert_wrong_length_to_UN = True
 
-# parent path to read the Utils
-parent_dir = os.path.abspath('..')
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
+# Get the home directory
+home_directory = os.path.expanduser('~')
 
-# import main Utils package
+# Append the parent directory to the Python path
+sys.path.append(os.path.join(home_directory, 'VSCode', 'UCAN-PET-CT-image-data-handling-pipeline'))
+
 from Utils import utils
 
 # reading main config file
