@@ -11,8 +11,6 @@ from datetime import datetime
 import traceback
 from PIL import Image
 
-# %env SITK_SHOW_COMMAND '/home/andres/Downloads/Slicer-5.4.0-linux-amd64/Slicer'
-
 import sys
 
 # Get the home directory
@@ -92,7 +90,7 @@ for index, row in resampled_directory_df.iterrows():
     utils.get_2D_projections(SUV_adipose, 'SUV', SUV_ptype, angle, img_n=raw_projections_path + str(row['npr']) + '/' + str(row['scan_date']) + '/SUV_adipose/')
     utils.get_2D_projections(SUV_air, 'SUV', SUV_ptype, angle, img_n=raw_projections_path + str(row['npr']) + '/' + str(row['scan_date']) + '/SUV_air/')
 
-df_for_collages = pd.DataFrame(columns=["patient_ID", "scan_date", "SUV_MIP", "SUV_bone", "SUV_lean", "SUV_adipose", "SUV_air"])
+df_of_raw_projections = pd.DataFrame(columns=["patient_ID", "scan_date", "SUV_MIP", "SUV_bone", "SUV_lean", "SUV_adipose", "SUV_air"])
 for patient_ID in tqdm(sorted(os.listdir(raw_projections_path))):
     for scan_date in sorted(os.listdir(os.path.join(raw_projections_path, patient_ID))):
         for angle in ["-90.0", "0.0"]:
@@ -102,28 +100,30 @@ for patient_ID in tqdm(sorted(os.listdir(raw_projections_path))):
             SUV_adipose_path = os.path.join(raw_projections_path, patient_ID, scan_date, "SUV_adipose/" + angle + ".npy")
             SUV_air_path = os.path.join(raw_projections_path, patient_ID, scan_date, "SUV_air/" + angle + ".npy")
             df_temp = pd.DataFrame({"patient_ID": [patient_ID], "scan_date": [scan_date], "SUV_MIP": [SUV_MIP_path], "SUV_bone": [SUV_bone_path], "SUV_lean": [SUV_lean_path], "SUV_adipose": [SUV_adipose_path], "SUV_air": [SUV_air_path], "angle": [float(angle)]})
-            df_for_collages = pd.concat([df_for_collages, df_temp], ignore_index=True)
+            df_of_raw_projections = pd.concat([df_of_raw_projections, df_temp], ignore_index=True)
 
 # Generate a dataframe of the raw 2D projections
-df_for_collages["CT_MIP"] = df_for_collages["SUV_MIP"]
-df_for_collages["CT_bone"] = df_for_collages["SUV_bone"]
-df_for_collages["CT_lean"] = df_for_collages["SUV_lean"]
-df_for_collages["CT_adipose"] = df_for_collages["SUV_adipose"]
-df_for_collages["CT_air"] = df_for_collages["SUV_air"]
+df_of_raw_projections["CT_MIP"] = df_of_raw_projections["SUV_MIP"]
+df_of_raw_projections["CT_bone"] = df_of_raw_projections["SUV_bone"]
+df_of_raw_projections["CT_lean"] = df_of_raw_projections["SUV_lean"]
+df_of_raw_projections["CT_adipose"] = df_of_raw_projections["SUV_adipose"]
+df_of_raw_projections["CT_air"] = df_of_raw_projections["SUV_air"]
 
-df_for_collages["CT_MIP"] = df_for_collages["CT_MIP"].str.replace("SUV_MIP", "CT_MIP")
-df_for_collages["CT_bone"] = df_for_collages["CT_bone"].str.replace("SUV_bone", "CT_bone")
-df_for_collages["CT_lean"] = df_for_collages["CT_lean"].str.replace("SUV_lean", "CT_lean")
-df_for_collages["CT_adipose"] = df_for_collages["CT_adipose"].str.replace("SUV_adipose", "CT_adipose")
-df_for_collages["CT_air"] = df_for_collages["CT_air"].str.replace("SUV_air", "CT_air")
+df_of_raw_projections["CT_MIP"] = df_of_raw_projections["CT_MIP"].str.replace("SUV_MIP", "CT_MIP")
+df_of_raw_projections["CT_bone"] = df_of_raw_projections["CT_bone"].str.replace("SUV_bone", "CT_bone")
+df_of_raw_projections["CT_lean"] = df_of_raw_projections["CT_lean"].str.replace("SUV_lean", "CT_lean")
+df_of_raw_projections["CT_adipose"] = df_of_raw_projections["CT_adipose"].str.replace("SUV_adipose", "CT_adipose")
+df_of_raw_projections["CT_air"] = df_of_raw_projections["CT_air"].str.replace("SUV_air", "CT_air")
 
 
-df_for_collages = df_for_collages[["patient_ID", "scan_date", "SUV_MIP", "CT_MIP", "SUV_bone", "CT_bone", "SUV_lean", "CT_lean", "SUV_adipose", "CT_adipose", "SUV_air", "CT_air", "angle"]]
-df_for_collages.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_raw_projections.xlsx", index=False)
+df_of_raw_projections = df_of_raw_projections[["patient_ID", "scan_date", "SUV_MIP", "CT_MIP", "SUV_bone", "CT_bone", "SUV_lean", "CT_lean", "SUV_adipose", "CT_adipose", "SUV_air", "CT_air", "angle"]]
+df_of_raw_projections.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_raw_projections.xlsx", index=False)
+
+# df_of_raw_projections = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/df_of_raw_projections.xlsx")
 
 cropped_array = np.zeros((580, 256))
 
-for row, image in df_for_collages.iterrows():
+for row, image in df_of_raw_projections.iterrows():
 
     save_path_temp = os.path.join(reshaped_projections_path, str(image["patient_ID"]), str(image["scan_date"]))
     if not os.path.exists(save_path_temp):
@@ -228,4 +228,30 @@ for row, image in df_for_collages.iterrows():
         cropped_array = CT_air[crop_from_top:crop_from_bottom, :]
         np.save(os.path.join(save_path_temp, "CT_air" + ".npy"), cropped_array)
 
-df_for_collages.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_reshaped_projections.xlsx", index=False)
+# df_of_reshaped_projections = pd.DataFrame(columns=["patient_ID", "scan_date", "SUV_MIP", "SUV_bone", "SUV_lean", "SUV_adipose", "SUV_air"])
+# for patient_ID in tqdm(sorted(os.listdir(reshaped_projections_path))):
+#     for scan_date in sorted(os.listdir(os.path.join(reshaped_projections_path, patient_ID))):
+#         for angle in ["-90.0", "0.0"]:
+#             SUV_MIP_path = os.path.join(reshaped_projections_path, patient_ID, scan_date, "SUV_MIP" + ".npy")
+#             SUV_bone_path = os.path.join(reshaped_projections_path, patient_ID, scan_date, "SUV_bone" + ".npy")
+#             SUV_lean_path = os.path.join(reshaped_projections_path, patient_ID, scan_date, "SUV_lean" + ".npy")
+#             SUV_adipose_path = os.path.join(reshaped_projections_path, patient_ID, scan_date, "SUV_adipose" + ".npy")
+#             SUV_air_path = os.path.join(reshaped_projections_path, patient_ID, scan_date, "SUV_air" + ".npy")
+#             df_temp = pd.DataFrame({"patient_ID": [patient_ID], "scan_date": [scan_date], "SUV_MIP": [SUV_MIP_path], "SUV_bone": [SUV_bone_path], "SUV_lean": [SUV_lean_path], "SUV_adipose": [SUV_adipose_path], "SUV_air": [SUV_air_path]})
+#             df_of_reshaped_projections = pd.concat([df_of_reshaped_projections, df_temp], ignore_index=True)
+
+# df_of_reshaped_projections["CT_MIP"] = df_of_reshaped_projections["SUV_MIP"]
+# df_of_reshaped_projections["CT_bone"] = df_of_reshaped_projections["SUV_bone"]
+# df_of_reshaped_projections["CT_lean"] = df_of_reshaped_projections["SUV_lean"]
+# df_of_reshaped_projections["CT_adipose"] = df_of_reshaped_projections["SUV_adipose"]
+# df_of_reshaped_projections["CT_air"] = df_of_reshaped_projections["SUV_air"]
+
+# df_of_reshaped_projections["CT_MIP"] = df_of_reshaped_projections["CT_MIP"].str.replace("SUV_MIP", "CT_MIP")
+# df_of_reshaped_projections["CT_bone"] = df_of_reshaped_projections["CT_bone"].str.replace("SUV_bone", "CT_bone")
+# df_of_reshaped_projections["CT_lean"] = df_of_reshaped_projections["CT_lean"].str.replace("SUV_lean", "CT_lean")
+# df_of_reshaped_projections["CT_adipose"] = df_of_reshaped_projections["CT_adipose"].str.replace("SUV_adipose", "CT_adipose")
+# df_of_reshaped_projections["CT_air"] = df_of_reshaped_projections["CT_air"].str.replace("SUV_air", "CT_air")
+
+
+# df_of_reshaped_projections = df_of_reshaped_projections[["patient_ID", "scan_date", "SUV_MIP", "CT_MIP", "SUV_bone", "CT_bone", "SUV_lean", "CT_lean", "SUV_adipose", "CT_adipose", "SUV_air", "CT_air"]]
+# df_of_reshaped_projections.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_reshaped_projections.xlsx", index=False)
