@@ -51,7 +51,7 @@ batch_size_train = 6
 args = {"num_workers": 2,
         "batch_size_val": 1} #25
 
-df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_regression_v1.xlsx")
+df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_model_training.xlsx")
 checkpoint_path = "/media/andres/T7 Shield1/UCAN_project/Results/regression/Experiment_1/CV_0/Network_Weights/best_model_775.pth.tar"
 # df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_regression_v2.xlsx")
 path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression/"
@@ -61,11 +61,6 @@ pre_trained_weights = True
 
 
 df_sorted = df.sort_values(by="patient_ID")
-try:
-    df_clean = df_sorted.drop(columns="Unnamed: 0").reset_index(drop=True)
-except:
-    df_clean = df_sorted.copy()
-
 output_path = os.path.join(path_output, "Experiment_" + str(experiment) + "/")
 
 for k in tqdm(range(k_fold)):
@@ -121,13 +116,13 @@ for k in tqdm(range(k_fold)):
 
         factor = round(df.shape[0]/k_fold)
         if k == (k_fold - 1):
-            patients_for_val = df_clean[factor*k:].patient_ID.tolist()
-            df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+            patients_for_val = df_sorted[factor*k:].patient_ID.tolist()
+            df_val = df_sorted[df_sorted.patient_ID.isin(patients_for_val)].reset_index(drop=True)
         else:
-            patients_for_val = df_clean[factor*k:factor*k+factor].patient_ID.tolist()
-            df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+            patients_for_val = df_sorted[factor*k:factor*k+factor].patient_ID.tolist()
+            df_val = df_sorted[df_sorted.patient_ID.isin(patients_for_val)].reset_index(drop=True)
 
-        df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+        df_train = df_sorted[~df_sorted.patient_ID.isin(patients_for_val)].reset_index(drop=True)
 
         print("Number of patients in Training set: ", len(df_train))
         print("Number of patients in Valdation set: ", len(df_val))
