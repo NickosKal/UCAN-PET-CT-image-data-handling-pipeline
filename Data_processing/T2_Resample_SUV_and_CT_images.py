@@ -9,7 +9,6 @@ import matplotlib.pylab as plt
 import SimpleITK as sitk
 from datetime import datetime
 
-%env SITK_SHOW_COMMAND "/home/andres/Downloads/Slicer-5.4.0-linux-amd64/Slicer"
 pd.set_option('display.max_colwidth', None)
 pd.set_option('display.max_columns', None)
 dicom.config.convert_wrong_length_to_UN = True
