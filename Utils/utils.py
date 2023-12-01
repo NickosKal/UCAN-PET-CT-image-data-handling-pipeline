@@ -127,8 +127,6 @@ def save_projections_as_png(image,img_name, invert = True):
         pass
     writer.Execute(img_write)  #sitk.Cast(sitk.RescaleIntensity(img,outputMinimum=0,outputMaximum=15)
 
-
-
 def save_projections_as_nparr(image,img_name, invert = True):
     '''
 
@@ -150,7 +148,6 @@ def save_projections_as_nparr(image,img_name, invert = True):
     minv,maxv= np.min(arr), np.max(arr)
     arr_normed = (arr - minv) / (maxv - minv)
     np.save(img_name,np.array(arr_normed))
-
 
 def get_proj_after_mask(img):
     
@@ -264,7 +261,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
         resampled_image = sitk.Resample(image1=vol_img,
                                         size=new_sz,
                                         transform=rotation_transform,
-                                        interpolator=sitk.sitkNearestNeighbor,
+                                        interpolator=sitk.sitkLinear,
                                         outputOrigin=min_bounds,
                                         outputSpacing=new_spc,
                                         outputDirection = vol_img.GetDirection(), #[1,0,0,0,1,0,0,0,1]
@@ -327,3 +324,29 @@ def compute_suv(vol_img, PatientWeight, AcquisitionTime , RadiopharmaceuticalSta
     suv = raw*weight_grams/injected_dose_decay
     
     return suv, estimated, raw,spacing,origin,direction
+
+def find_distorted_examinations(path_of_exams, path_to_save):
+    directory_list = list()
+    for root, dirs, files in os.walk(path_of_exams, topdown=False):
+        for name in dirs:
+            directory_list.append(os.path.join(root, name))
+    
+    dataset = pd.DataFrame(directory_list, columns=['directory'])
+    countfiles_selected = {"directory": [], "count":[]}
+
+    for index, row in dataset.iterrows():
+        count = 0
+        for path in os.listdir(row["directory"]):
+            if os.path.isfile(os.path.join(row["directory"], path)):
+                count += 1
+                
+        countfiles_selected["directory"].append(row["directory"])
+        countfiles_selected["count"].append(count)
+
+    countfiles_selected_df = pd.DataFrame.from_dict(countfiles_selected)
+    exams_with_distorted_images_file = countfiles_selected_df[countfiles_selected_df["count"] < 179].reset_index()
+    exams_with_distorted_images_file[['source_directory', 'patient_directory', 'PET-CT_info']] = exams_with_distorted_images_file['directory'].str.rsplit(pat='/', n=2, expand=True)
+    exams_with_distorted_images_file.to_excel(os.path.join(path_to_save, "exams_with_distorted_images_file.xlsx"))
+    dataset = dataset[~dataset.directory.isin(exams_with_distorted_images_file.directory)]
+    dataset.to_excel(os.path.join(path_to_save, "data_ready_for_filtering.xlsx"))
+    

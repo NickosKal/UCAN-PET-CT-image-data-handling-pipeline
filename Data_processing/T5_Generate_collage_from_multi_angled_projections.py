@@ -24,18 +24,18 @@ def display_full(x):
                            ):
         print(x)
 
-collages_path = "/media/andres/T7 Shield1/UCAN_project/collages/"
-df_of_reshaped_projections = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/df_of_reshaped_projections.xlsx")
-df_of_reshaped_projections.head()
+raw_collages_path = "/media/andres/T7 Shield1/UCAN_project/collages/raw_collages"
+df_of_raw_projections = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/df_of_raw_projections.xlsx")
+df_of_raw_projections.head()
 
-df_of_reshaped_projections["scan_date"] = df_of_reshaped_projections["scan_date"].astype(str)
-df_of_reshaped_projections["unique_pat_ID_scan_date"] = df_of_reshaped_projections["patient_ID"] + "_" + df_of_reshaped_projections["scan_date"]
-unique_patient = np.unique(df_of_reshaped_projections["unique_pat_ID_scan_date"])
+df_of_raw_projections["scan_date"] = df_of_raw_projections["scan_date"].astype(str)
+df_of_raw_projections["unique_pat_ID_scan_date"] = df_of_raw_projections["patient_ID"] + "_" + df_of_raw_projections["scan_date"]
+unique_patient = np.unique(df_of_raw_projections["unique_pat_ID_scan_date"])
 
 # Generate the collages
 for scan_date in tqdm(unique_patient):
-    temp = df_of_reshaped_projections[df_of_reshaped_projections["unique_pat_ID_scan_date"] == scan_date]
-    save_path = os.path.join(collages_path, str(temp["patient_ID"].iloc[0]), str(temp["scan_date"].iloc[0]))
+    temp = df_of_raw_projections[df_of_raw_projections["unique_pat_ID_scan_date"] == scan_date]
+    save_path = os.path.join(raw_collages_path, str(temp["patient_ID"].iloc[0]), str(temp["scan_date"].iloc[0]))
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -97,14 +97,14 @@ for scan_date in tqdm(unique_patient):
 
 # Create a dataframe with the paths of the collages.
 df_of_collages = pd.DataFrame(columns=["patient_ID", "scan_date", "SUV_MIP", "SUV_bone", "SUV_lean", "SUV_adipose", "SUV_air"])
-for patient_ID in tqdm(sorted(os.listdir(collages_path))):
-    for scan_date in sorted(os.listdir(os.path.join(collages_path, patient_ID))):
+for patient_ID in tqdm(sorted(os.listdir(raw_collages_path))):
+    for scan_date in sorted(os.listdir(os.path.join(raw_collages_path, patient_ID))):
         for angle in ["-90.0", "0.0"]:
-            SUV_MIP_path = os.path.join(collages_path, patient_ID, scan_date, "SUV_MIP" + ".npy")
-            SUV_bone_path = os.path.join(collages_path, patient_ID, scan_date, "SUV_bone" + ".npy")
-            SUV_lean_path = os.path.join(collages_path, patient_ID, scan_date, "SUV_lean" + ".npy")
-            SUV_adipose_path = os.path.join(collages_path, patient_ID, scan_date, "SUV_adipose" + ".npy")
-            SUV_air_path = os.path.join(collages_path, patient_ID, scan_date, "SUV_air" + ".npy")
+            SUV_MIP_path = os.path.join(raw_collages_path, patient_ID, scan_date, "SUV_MIP" + ".npy")
+            SUV_bone_path = os.path.join(raw_collages_path, patient_ID, scan_date, "SUV_bone" + ".npy")
+            SUV_lean_path = os.path.join(raw_collages_path, patient_ID, scan_date, "SUV_lean" + ".npy")
+            SUV_adipose_path = os.path.join(raw_collages_path, patient_ID, scan_date, "SUV_adipose" + ".npy")
+            SUV_air_path = os.path.join(raw_collages_path, patient_ID, scan_date, "SUV_air" + ".npy")
             df_temp = pd.DataFrame({"patient_ID": [patient_ID], "scan_date": [scan_date], "SUV_MIP": [SUV_MIP_path], "SUV_bone": [SUV_bone_path], "SUV_lean": [SUV_lean_path], "SUV_adipose": [SUV_adipose_path], "SUV_air": [SUV_air_path]})
             df_of_collages = pd.concat([df_of_collages, df_temp], ignore_index=True)
 
@@ -123,5 +123,5 @@ df_of_collages["CT_air"] = df_of_collages["CT_air"].str.replace("SUV_air", "CT_a
 
 df_of_collages = df_of_collages[["patient_ID", "scan_date", "SUV_MIP", "CT_MIP", "SUV_bone", "CT_bone", "SUV_lean", "CT_lean", "SUV_adipose", "CT_adipose", "SUV_air", "CT_air"]]
 df_of_collages = df_of_collages.drop_duplicates()
-df_of_collages.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_collages.xlsx", index=False)
+df_of_collages.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_raw_collages.xlsx", index=False)
 

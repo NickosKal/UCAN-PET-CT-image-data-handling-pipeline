@@ -3,7 +3,7 @@ import pandas as pd
 
 
 # The following part of the code it is used to find arrays that might have NaN values
-df_of_collages = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/df_of_collages.xlsx")
+df_of_collages = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/df_of_reshaped_collages.xlsx")
 temp = df_of_collages.copy()
 temp['incorrect_projection'] = 'False'
 

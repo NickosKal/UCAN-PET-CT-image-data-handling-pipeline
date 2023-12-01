@@ -274,7 +274,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
         resampled_image = sitk.Resample(image1=vol_img,
                                         size=new_sz,
                                         transform=rotation_transform,
-                                        interpolator=sitk.sitkNearestNeighbor,
+                                        interpolator=sitk.sitkLinear,
                                         outputOrigin=min_bounds,
                                         outputSpacing=new_spc,
                                         outputDirection = vol_img.GetDirection(), #[1,0,0,0,1,0,0,0,1]
