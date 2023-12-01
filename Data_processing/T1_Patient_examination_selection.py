@@ -13,12 +13,13 @@ import concurrent.futures
 import pydicom as dicom
 import SimpleITK as sitk
 import random
-
+from Utils import utils
 dicom.config.convert_wrong_length_to_UN = True
 
 # Global path variables
 source_path_for_non_GPU_system = "/media/andres/T7 Shield/ucan_lymfom/Excel_files/06_11_2023/"
-# source_path = "/media/andres/T7 Shield/U-CAN-Lymfom_A"
+source_path = "/media/andres/T7 Shield/ucan_lymfom/"
+output_path = "/media/andres/T7 Shield/ucan_lymfom/"
 # source_path = "F:/ucan_lymfom"
 #source_path = "D:\\ucan_lymfom"
 
@@ -257,6 +258,8 @@ if __name__ == '__main__':
     PET_specifications_first_set = ["qcfx", "m.free"]
     PET_specifications_second_set = ["vpfx", "m.free"]
     PET_specifications_third_set = "vpfx"
+
+    utils.find_distorted_examinations(source_path, output_path)
 
     dataset = pd.read_excel(os.path.join(source_path_for_non_GPU_system, "data_ready_for_filtering.xlsx"))
 
