@@ -6,7 +6,7 @@ import scipy.ndimage
 import os
 import cv2
 from tqdm import tqdm
-from utils import get_2D_projections
+from Data_processing.utils_test import get_2D_projections
 from datetime import datetime
 import traceback
 from PIL import Image
