@@ -43,16 +43,19 @@ import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import densenet121
 
-experiment = "4"
+experiment = "5"
 k_fold = 10
 learning_rate = 1e-4
 weight_decay = 1e-5
-batch_size_train = 2
+batch_size_train = 4
 args = {"num_workers": 4,
         "batch_size_val": 1} #25
 
 #df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_regression.xlsx")
-df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_regression_v2.xlsx")
+#df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_regression_v2.xlsx")
+
+df = pd.read_excel("//home/ashish/Ashish/UCAN/ReshapedCollages/dataset_for_model_training_v1.xlsx")
+
 df_sorted = df.sort_values(by="patient_ID")
 
 try:
@@ -64,9 +67,9 @@ except:
 path_output = "/home/ashish/Ashish/UCAN/Results/regression/experiment_" + experiment + "/"
 outcome = "patient_age" # "mtv"
 
-checkpoint_path = "/home/ashish/Ashish/UCAN/Results/regression/experiment_4/CV_0/Network_Weights/best_model_20.pth.tar"
+#checkpoint_path = "/home/ashish/Ashish/UCAN/Results/regression/experiment_4/CV_0/Network_Weights/best_model_20.pth.tar"
 
-pre_trained_weights = True
+pre_trained_weights = False
 
 class WideBasic(nn.Module):
     def __init__(self, in_planes, planes, stride=1):
@@ -146,15 +149,15 @@ for k in tqdm(range(k_fold)):
         print(device)
 
         #model = DenseNet121(spatial_dims=2, in_channels=10, out_channels=1, dropout_prob=0.25).to(device)
-        model = WideResNetRegression(widen_factor=8, depth=16, num_channels=10, dropout_rate=0.25).to(device)
+        model = WideResNetRegression(widen_factor=8, depth=22, num_channels=10, dropout_rate=0.25).to(device)
         #model = torch.hub.load('pytorch/vision:v0.10.0', 'wide_resnet101_2', pretrained=True).to(device)
         
         if pre_trained_weights:
             # Use it in case we have pre trained weights
-            print("Checkpoint Loading for Cross Validation: {}".format(k))
+            #print("Checkpoint Loading for Cross Validation: {}".format(k))
             #checkpoint_path = load_checkpoint(args, k)
-            checkpoint = torch.load(checkpoint_path)
-            model.load_state_dict(checkpoint['net'])
+            #checkpoint = torch.load(checkpoint_path)
+            #model.load_state_dict(checkpoint['net'])
             pass
         else:
             print("Training from Scratch!") 
@@ -202,7 +205,7 @@ for k in tqdm(range(k_fold)):
 
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
-            epoch += 21
+            #epoch += 21
             #Training
             epoch_loss, train_loss = train_regression(model, train_files, train_loader, optimizer, loss_function, device, train_loss)
             print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}")
