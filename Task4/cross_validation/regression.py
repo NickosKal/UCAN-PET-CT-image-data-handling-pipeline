@@ -51,7 +51,7 @@ batch_size_train = 6
 args = {"num_workers": 2,
         "batch_size_val": 1} #25
 
-df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_model_training.xlsx")
+df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_model_regression_training.xlsx")
 # checkpoint_path = "/media/andres/T7 Shield1/UCAN_project/Results/regression/Experiment_1/CV_0/Network_Weights/best_model_775.pth.tar"
 # df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_regression_v2.xlsx")
 path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression/"

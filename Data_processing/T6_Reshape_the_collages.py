@@ -49,7 +49,7 @@ for row, image in df_of_raw_collages.iterrows():
         np.save(os.path.join(save_path_temp, "SUV_air" + ".npy"), result)
         
         CT_MIP = np.load(image["CT_MIP"])
-        result = np.pad(SUV_MIP, ((pad_from_top, pad_from_bottom), (0,0)))
+        result = np.pad(CT_MIP, ((pad_from_top, pad_from_bottom), (0,0)))
         np.save(os.path.join(save_path_temp, "CT_MIP" + ".npy"), result)
 
         CT_bone = np.load(image["CT_bone"])

@@ -266,7 +266,7 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
         # vol_img.GetPixelID(),
         # )
     else:
-        default_pix_val=20
+        default_pix_val=-1024
 
 
 
