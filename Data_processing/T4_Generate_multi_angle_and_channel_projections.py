@@ -6,7 +6,6 @@ import scipy.ndimage
 import os
 import cv2
 from tqdm import tqdm
-from Data_processing.utils_test import get_2D_projections
 from datetime import datetime
 import traceback
 from PIL import Image
@@ -25,7 +24,6 @@ config = utils.read_config()
 
 raw_projections_path = config["projections"]["paths"]["raw_projections_path"]
 resampled_SUV_CT_path = config['resampling']['path_to_save']
-reshaped_projections_path = "/media/andres/T7 Shield1/UCAN_project/2D_projections/reshaped_projections/"
 
 # Create a dataframe with the paths from the niftii files to be used later to generate the 2D projections
 resampled_directory_list = []
