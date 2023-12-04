@@ -26,19 +26,26 @@ from monai.utils.misc import set_determinism
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from generate_dataset import prepare_data
 import sys
+
+parent_dir = os.path.abspath('../')
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+
 from Task4.utils import train_classification, validation_classification, plot_auc
 
+experiment = "1"
 k_fold = 15
 learning_rate = 0
 weight_decay = 0.001
 batch_size_train = 13
 args = {"num_workers": 2,
-        "batch_size_val": 25}
+        "batch_size_val": 1}
 
-df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_classification.xlsx")
+df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_model_classification_training.xlsx")
+df_sorted = df.sort_values(by="patient_ID")
 
-path_output = "/media/andres/T7 Shield1/UCAN_project/Results/classification"
-outcome = ["sex"] # diagnosis
+path_output = "/media/andres/T7 Shield1/UCAN_project/Results/classification/Experiment_" + experiment + "/"
+outcome = "sex" # diagnosis
 pre_trained_weights = False
 
 for k in tqdm(range(k_fold)):
@@ -46,12 +53,12 @@ for k in tqdm(range(k_fold)):
         print("Cross Validation for fold: {}".format(k))
         max_epochs = 200
         val_interval = 5
-        best_metric = "best_metric_classification"
-        best_metric_epoch = "best_metrix_epoch"
+        best_metric = 0
+        best_metric_epoch = -1
         metric_values = []
         print("Network Initialization")
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = Densenet121(spatial_dims=10, in_channels=10, out_channels=10, init_features=64, dropout_prob=0.25).to(device)
+        model = Densenet121(spatial_dims=2, in_channels=10, out_channels=2, init_features=64, dropout_prob=0.25).to(device)
         
         if pre_trained_weights:
             # Load pre trained weights
@@ -66,14 +73,24 @@ for k in tqdm(range(k_fold)):
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_epochs)
 
-        os.mkdir("dir path", k)
+        if not os.path.exists(path_output+"CV_"+str(k)+'/Network_Weights/'):
+            os.makedirs(path_output+"CV_"+str(k)+'/Network_Weights/')
+
+        if not os.path.exists(path_output+"CV_"+str(k)+'/Metrics/'):
+            os.makedirs(path_output+"CV_"+str(k)+'/Metrics/')
+        
+        if not os.path.exists(path_output+"CV_"+str(k)+'/MIPs/'):
+            os.makedirs(path_output+"CV_"+str(k)+'/MIPs/')
+
         factor = round(df.shape[0]/k_fold)
         if k == (k_fold - 1):
-            df_val = df[factor*k:].reset_index(drop=True)
+            patients_for_val = df[factor*k:].patient_ID.tolist()
+            df_val = df[df.patient_ID.isin(patients_for_val)].reset_index(drop=True)
         else:
-            df_val = df[factor*k:factor*k+factor].reset_index(drop=True)
+            patients_for_val = df[factor*k:factor*k+factor].patient_ID.tolist()
+            df_val = df[df.patient_ID.isin(patients_for_val)].reset_index(drop=True)
         
-        df_train = df[~df.scan_date.isin(df_val.scan_date)].reset_index(drop=True)
+        df_train = df[~df.patient_ID.isin(patients_for_val)].reset_index(drop=True)
 
         print("Number of patients in Training set: ", len(df_train))
         print("Number of patients in Validation set: ", len(df_val))

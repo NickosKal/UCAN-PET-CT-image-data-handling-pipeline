@@ -51,6 +51,7 @@ def train_classification(model, train_loader, optimizer, loss_function, device, 
             labels = [label_mapping[label] for label in labels]
             labels = torch.LongTensor(labels)
         else:
+            print(labels)
             labels = labels.type(torch.LongTensor)
         step += 1
         inputs, labels = inputs.to(device), labels.to(device)
@@ -104,7 +105,6 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
                 label_mapping = {'NEGATIVE': 0, 'LYMPHOMA': 1, 'LUNG_CANCER': 1, 'MELANOMA': 1}
                 labels = [label_mapping[label] for label in labels]
                 labels = torch.LongTensor(labels)
-
             #labels = labels.type(torch.LongTensor)
             inputs, labels = inputs.to(device), labels.numpy()
             #inputs = torch.unsqueeze(inputs, dim=0)
