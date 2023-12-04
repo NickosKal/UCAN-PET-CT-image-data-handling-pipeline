@@ -67,9 +67,9 @@ except:
 path_output = "/home/ashish/Ashish/UCAN/Results/regression/experiment_" + experiment + "/"
 outcome = "patient_age" # "mtv"
 
-#checkpoint_path = "/home/ashish/Ashish/UCAN/Results/regression/experiment_4/CV_0/Network_Weights/best_model_20.pth.tar"
+checkpoint_path = "/home/ashish/Ashish/UCAN/Results/regression/experiment_5/CV_0/Network_Weights/best_model_25.pth.tar"
 
-pre_trained_weights = False
+pre_trained_weights = True
 
 class WideBasic(nn.Module):
     def __init__(self, in_planes, planes, stride=1):
@@ -154,10 +154,10 @@ for k in tqdm(range(k_fold)):
         
         if pre_trained_weights:
             # Use it in case we have pre trained weights
-            #print("Checkpoint Loading for Cross Validation: {}".format(k))
+            print("Checkpoint Loading for Cross Validation: {}".format(k))
             #checkpoint_path = load_checkpoint(args, k)
-            #checkpoint = torch.load(checkpoint_path)
-            #model.load_state_dict(checkpoint['net'])
+            checkpoint = torch.load(checkpoint_path)
+            model.load_state_dict(checkpoint['net'])
             pass
         else:
             print("Training from Scratch!") 
@@ -205,7 +205,7 @@ for k in tqdm(range(k_fold)):
 
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
-            #epoch += 21
+            epoch += 26
             #Training
             epoch_loss, train_loss = train_regression(model, train_files, train_loader, optimizer, loss_function, device, train_loss)
             print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}")
