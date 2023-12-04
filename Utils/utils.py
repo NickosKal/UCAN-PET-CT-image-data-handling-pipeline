@@ -16,52 +16,6 @@ def read_config():
         #print(config)
     return config
 
-#read_config()
-"""
-config = read_config()
-print('-------------')
-print(config[1]['resampling'])
-
-source_path = config[0]['paths']['source_path']
-incomplete_folders_filename = config[0]['filenames']['incomplete_folders_filename']
-final_selected_images_filename = config[0]['filenames']['final_selected_images_filename']
-list_of_distorted_images_filename = config[0]['filenames']['list_of_distorted_images_filename']
-
-incomplete_folders_path = os.path.join(source_path, incomplete_folders_filename)
-print(incomplete_folders_path)
-
-final_selected_folders = os.path.join(source_path, final_selected_images_filename)
-print(final_selected_folders)
-
-list_of_distorted_images = os.path.join(source_path, list_of_distorted_images_filename)
-print(list_of_distorted_images)
-"""
-
-"""
-Input: PET/CT, Proj type, angle, min & max angle, HU Values/ mention: Bone/Adipose/Tissue
-
-Output: 2D sampled projections
-
-
-Notes:
-For Age,
-
-CT => lean sum of ,musles pixel, mean hu musle
-from musle take max PET  MIP
-
-CT, PT seperate
-
-CT(Grayscale) + PT(Color) = Overlap 2D img
-
-"""
-
-
-'''
-
-Function to save the 3d simpleitk objects to disk(deprecated)
-
-'''
-
 def display_full(x):
     with pd.option_context("display.max_rows", None,
                            "display.max_columns", None,
@@ -108,14 +62,7 @@ def save_projections_as_png(image,img_name, invert = True):
     '''
 
     writer = sitk.ImageFileWriter()
-    #img=sitk.Extract(image, image.GetSize())
     writer.SetFileName(img_name)
-    # img_write=  sitk.Cast(    
-    #     sitk.IntensityWindowing(
-    #         image, windowMinimum=float(sitk.GetArrayFromImage(image).min()), windowMaximum=clip_value, outputMinimum=0.0, outputMaximum=255
-    #     ),
-    #     image.GetPixelID(),
-    #     )
     img_write= sitk.Flip(image, [False, True]) #flipping across y axis
     img_write=sitk.Cast(
         sitk.RescaleIntensity(img_write), #sitk.RescaleIntensity()
@@ -190,14 +137,30 @@ def get_proj_after_mask(img):
     return bone_mask, lean_mask, adipose_mask, air_mask
 
 def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, clip_value=15.0, t_type='N',save_img=True,img_n=''):
+    """
+    Input: PET/CT, Proj type, angle, min & max angle, HU Values/ mention: Bone/Adipose/Tissue
+
+    Output: 2D sampled projections
+
+
+    Notes:
+    For Age,
+
+    CT => lean sum of ,musles pixel, mean hu musle
+    from musle take max PET  MIP
+
+    CT, PT seperate
+
+    CT(Grayscale) + PT(Color) = Overlap 2D img
+
+    """
+
     projection = {'sum': sitk.SumProjection,
                 'mean':  sitk.MeanProjection,
                 'std': sitk.StandardDeviationProjection,
                 'min': sitk.MinimumProjection,
                 'max': sitk.MaximumProjection}
     
-    #vol_img = make_isotropic(vol_img)
-
     paxis = 0
     rotation_axis = [0,0,1]
     rotation_angles = np.linspace(-np.pi/2, np.pi/2, int( (np.pi / (  ( angle / 180 ) * np.pi ) ) + 1 ) ) # angle range- [0, +180];
@@ -217,14 +180,12 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
 
     all_points = []
     for ang in rotation_angles:
-        rotation_transform.SetRotation(rotation_axis, ang)    
-        #rotation_transform.SetRotation(0,0,ang)    
+        rotation_transform.SetRotation(rotation_axis, ang)     
         all_points.extend([rotation_transform.TransformPoint(pnt) for pnt in image_bounds])
         
     all_points = np.array(all_points)
     min_bounds = all_points.min(0)
     max_bounds = all_points.max(0)
-
 
     #resampling grid will be isotropic so no matter which direction we project to
     #the images we save will always be isotropic (required for vol_img formats that 
@@ -232,32 +193,27 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
 
     new_spc = [np.min(vol_img.GetSpacing())]*3
     new_sz = [int(sz/spc + 0.5) for spc,sz in zip(new_spc, max_bounds-min_bounds)]
-    # print('new size: ', new_sz)
-    #new_sz = vol_img.GetSize()
     pix_array=sitk.GetArrayFromImage(vol_img)
     maxtensity,mintensity=float(pix_array.max()),float(pix_array.min())
-    # print(maxtensity,mintensity)
+    
+    """Setting a default pixel value based on modality (the resample function requires this argument as during rotation, 
+                                      the pixel intensities for new locations are set to a default value) """
     if modality == 'CT':
         default_pix_val=20
 
-
     else:
+        #Clipping intensities
         default_pix_val=0
-        #clipping intensities
         clamper = sitk.ClampImageFilter()
         clamper.SetLowerBound(0)
         clamper.SetUpperBound(clip_value)
         vol_img=clamper.Execute(vol_img)
-        # vol_img = sitk.Cast(    
-        # sitk.IntensityWindowing(
-        #     vol_img, windowMinimum=mintensity, windowMaximum=clip_value, outputMinimum=0.0, outputMaximum=255
-        # ),
-        # vol_img.GetPixelID(),
-        # )
 
+    
     for ang in rotation_angles:
         rotation_transform.SetRotation(rotation_axis, ang) 
-        #rotation_transform.SetRotation(0,0,ang)
+        
+        #Generate 3d volumes which are rotated by 'ang' angles
         resampled_image = sitk.Resample(image1=vol_img,
                                         size=new_sz,
                                         transform=rotation_transform,
@@ -267,21 +223,17 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
                                         outputDirection = vol_img.GetDirection(), #[1,0,0,0,1,0,0,0,1]
                                         defaultPixelValue = default_pix_val, 
                                         outputPixelType = vol_img.GetPixelID())
-        """
-        if modality=='CT':
-            masked_resampled_image=get_proj_after_mask(resampled_image,maxtensity,mintensity,t_type)
-        else:
-            masked_resampled_image=resampled_image
-        """
-
+        
+        #Generate 2d projections from the rotated volume
         proj_image = projection[ptype](resampled_image, paxis)
         extract_size = list(proj_image.GetSize())
         extract_size[paxis]=0 
         axes_shifted_pi=sitk.Extract(proj_image, extract_size) #flip axes
 
         if save_img:
+            #Save the projections as image or np array
             imgname= img_n + r'{0}'.format((180 * ang/np.pi))
-            save_projections_as_png(axes_shifted_pi, imgname + '.png', invert_intensity) #sitk.InvertIntensity(axes_shifted_pi,maximum=1)
+            save_projections_as_png(axes_shifted_pi, imgname + '.png', invert_intensity)
             save_projections_as_nparr(axes_shifted_pi, imgname, invert_intensity)
     print(f'Finished generating {int(180.0/angle)+1} - {ptype} intensity 2D projections from the {modality} volume image! ')
 

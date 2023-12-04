@@ -44,7 +44,6 @@ resampled_directory_df.drop_duplicates(inplace=True)
 
 utils.display_full(resampled_directory_df.head(2))
 
-# Generate the raw 2D projections
 for index, row in resampled_directory_df.iterrows():
 
     CT_ptype = 'mean'
@@ -64,26 +63,31 @@ for index, row in resampled_directory_df.iterrows():
     CT_img =sitk.ReadImage(CTnii_path)
     SUV_img =sitk.ReadImage(SUVnii_path)
 
+    #Create segmentation masks from the CT file
     bone_mask, lean_mask, adipose_mask, air_mask = utils.get_proj_after_mask(CT_img)
 
     multiply= sitk.MultiplyImageFilter()
 
+    #Extract CT segmentations using masks generated prior
     CT_bone = multiply.Execute(CT_img,sitk.Cast(bone_mask,CT_img.GetPixelID()))
     CT_lean = multiply.Execute(CT_img,sitk.Cast(lean_mask,CT_img.GetPixelID()))
     CT_adipose = multiply.Execute(CT_img,sitk.Cast(adipose_mask,CT_img.GetPixelID()))
     CT_air = multiply.Execute(CT_img,sitk.Cast(air_mask,CT_img.GetPixelID()))
 
+    # Generate the raw 2D projections from CT volumetric segmented images
     utils.get_2D_projections(CT_img, 'CT', CT_ptype, angle, invert_intensity= False, img_n=raw_projections_path + str(row['npr']) + '/' + str(row['scan_date']) + '/CT_MIP/')
     utils.get_2D_projections(CT_bone, 'CT', CT_ptype, angle, img_n=raw_projections_path + str(row['npr']) + '/' + str(row['scan_date']) + '/CT_bone/')
     utils.get_2D_projections(CT_lean, 'CT', CT_ptype, angle, img_n=raw_projections_path + str(row['npr']) + '/' + str(row['scan_date']) + '/CT_lean/')
     utils.get_2D_projections(CT_adipose, 'CT', CT_ptype, angle, invert_intensity= False, img_n=raw_projections_path + str(row['npr']) + '/' + str(row['scan_date']) + '/CT_adipose/')
     utils.get_2D_projections(CT_air, 'CT', CT_ptype, angle, img_n=raw_projections_path + str(row['npr']) + '/' + str(row['scan_date']) + '/CT_air/')
     
+    #Extract SUV segmentations using masks generated prior
     SUV_bone = multiply.Execute(SUV_img,sitk.Cast(bone_mask,SUV_img.GetPixelID()))
     SUV_lean = multiply.Execute(SUV_img,sitk.Cast(lean_mask,SUV_img.GetPixelID()))
     SUV_adipose = multiply.Execute(SUV_img,sitk.Cast(adipose_mask,SUV_img.GetPixelID()))
     SUV_air = multiply.Execute(SUV_img,sitk.Cast(air_mask,SUV_img.GetPixelID()))
 
+    # Generate the raw 2D projections from SUV volumetric segmented images
     utils.get_2D_projections(SUV_img, 'SUV', SUV_ptype, angle, img_n=raw_projections_path + str(row['npr']) + '/' + str(row['scan_date']) + '/SUV_MIP/')
     utils.get_2D_projections(SUV_bone, 'SUV', SUV_ptype, angle, img_n=raw_projections_path + str(row['npr']) + '/' + str(row['scan_date']) + '/SUV_bone/')
     utils.get_2D_projections(SUV_lean, 'SUV', SUV_ptype, angle, img_n=raw_projections_path + str(row['npr']) + '/' + str(row['scan_date']) + '/SUV_lean/')
@@ -115,6 +119,6 @@ df_of_raw_projections["CT_lean"] = df_of_raw_projections["CT_lean"].str.replace(
 df_of_raw_projections["CT_adipose"] = df_of_raw_projections["CT_adipose"].str.replace("SUV_adipose", "CT_adipose")
 df_of_raw_projections["CT_air"] = df_of_raw_projections["CT_air"].str.replace("SUV_air", "CT_air")
 
-
+#Save dataframe to disk
 df_of_raw_projections = df_of_raw_projections[["patient_ID", "scan_date", "SUV_MIP", "CT_MIP", "SUV_bone", "CT_bone", "SUV_lean", "CT_lean", "SUV_adipose", "CT_adipose", "SUV_air", "CT_air", "angle"]]
 df_of_raw_projections.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_raw_projections.xlsx", index=False)
