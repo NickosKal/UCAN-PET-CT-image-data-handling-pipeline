@@ -16,7 +16,7 @@ from tqdm import tqdm
 #import cc3d
 import SimpleITK as sitk
 import cv2
-os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
+# os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.ndimage.measurements import label
@@ -51,7 +51,6 @@ def train_classification(model, train_loader, optimizer, loss_function, device, 
             labels = [label_mapping[label] for label in labels]
             labels = torch.LongTensor(labels)
         else:
-            print(labels)
             labels = labels.type(torch.LongTensor)
         step += 1
         inputs, labels = inputs.to(device), labels.to(device)
@@ -101,10 +100,10 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         for inputs, labels in val_loader:
             model.eval()
 
-            if outcome == "diagnosis":            
-                label_mapping = {'NEGATIVE': 0, 'LYMPHOMA': 1, 'LUNG_CANCER': 1, 'MELANOMA': 1}
-                labels = [label_mapping[label] for label in labels]
-                labels = torch.LongTensor(labels)
+            #           
+                # label_mapping = {'C81': 0, 'C8': 1, 'LUNG_CANCER': 1, 'MELANOMA': 1}
+                # labels = [label_mapping[label] for label in labels]
+            labels = torch.LongTensor(labels)
             #labels = labels.type(torch.LongTensor)
             inputs, labels = inputs.to(device), labels.numpy()
             #inputs = torch.unsqueeze(inputs, dim=0)
@@ -115,6 +114,7 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
                 prediction = 0
             else:
                 prediction = 1
+            print(prediction)
             prediction_list.append(prediction)
             pred_prob_female.append(outputs[0][0])
             pred_prob_male.append(outputs[0][1])

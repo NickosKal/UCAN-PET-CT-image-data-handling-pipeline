@@ -91,8 +91,8 @@ def prepare_data(args, df_train, batch_size, shuffle=None, label=None):
     
     if label == "sex":
         label_train = df_train_shuffled["sex"].tolist()
-    elif label == "diagnosis":
-        label_train = df_train_shuffled["diagnosis"].tolist()
+    elif label == "GT_diagnosis_label":
+        label_train = df_train_shuffled["GT_diagnosis_label"].tolist()
     elif label == "patient_age":
         label_train = df_train_shuffled["patient_age"].tolist()
     elif label == "MTV":
