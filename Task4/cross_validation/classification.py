@@ -106,8 +106,9 @@ for k in tqdm(range(k_fold)):
         print("Number of patients in Training set: ", len(df_train))
         print("Number of patients in Validation set: ", len(df_val))
 
-        class_freq_diagnosis = np.unique(df_train["diagnosis_groups"], return_counts=True)[1]
+        class_freq_diagnosis = np.unique(df_train["GT_diagnosis_label"], return_counts=True)[1]
         class_weights_diagnosis = torch.tensor([float(class_freq_diagnosis[0]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[1]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[2]/np.sum(class_freq_diagnosis))]).to(device)
+        print("class_weights_diagnosis: ", class_weights_diagnosis)
         loss_function_diagnosis = torch.nn.CrossEntropyLoss(weight=class_weights_diagnosis)
 
         # Use this when training for sex classification
@@ -124,11 +125,10 @@ for k in tqdm(range(k_fold)):
             print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}")
 
             if (epoch + 1) % val_interval == 0:
-                metric_values, best_metric_new = validation_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_output, outcome)
+                metric_values, best_metric_new = validation_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_output_for_diagnosis, outcome)
                 best_metric = best_metric_new
             
-            print(metric_values)
-            np.save(os.path.join(path_output_for_diagnosis, "CV_ " + str(k) + "/AUC.npy"), metric_values)
+            np.save(os.path.join(path_output_for_diagnosis, "CV_" + str(k) + "/AUC.npy"), metric_values)
             path_dice = os.path.join(path_output_for_diagnosis, "CV_" + str(k), "epoch_vs_auc.jpg")
             if len(metric_values) > 2:
                 plot_auc(metric_values, path_dice)

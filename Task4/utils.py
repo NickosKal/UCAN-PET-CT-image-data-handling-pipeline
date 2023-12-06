@@ -23,6 +23,7 @@ from scipy.ndimage.measurements import label
 #import nibabel as nib
 import scipy.ndimage
 from sklearn.metrics import mean_absolute_error, r2_score
+from torcheval.metrics.functional import multiclass_auroc, multiclass_accuracy, multiclass_recall, multiclass_precision
 from Task4.cross_validation.generate_dataset import prepare_data
 
 def make_dirs(path, k):
@@ -94,23 +95,22 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         pat_id = np.unique(df_temp["patient_ID"])
         val_files, val_loader = prepare_data(args, df_temp, args["batch_size_val"], shuffle=False, label=outcome)
 
-        prediction_list = []
-        pred_prob_female = []
-        pred_prob_male = []
+        softmax_prob_list = []
         for inputs, labels in val_loader:
             model.eval()
 
-            #           
-                # label_mapping = {'C81': 0, 'C8': 1, 'LUNG_CANCER': 1, 'MELANOMA': 1}
-                # labels = [label_mapping[label] for label in labels]
             labels = torch.LongTensor(labels)
             #labels = labels.type(torch.LongTensor)
             inputs, labels = inputs.to(device), labels.numpy()
             #inputs = torch.unsqueeze(inputs, dim=0)
             outputs= torch.nn.Softmax(dim=1)(model(inputs))
-            outputs = outputs.data.cpu().numpy()
+            
+            softmax_out = outputs.data.cpu().numpy()
+            softmax_out = softmax_out[0].tolist()
+            softmax_prob_list.append(softmax_out)
             #print("outputs: ", outputs)
-            if outputs[0][0] > outputs[0][1]:
+        """            
+        if outputs[0][0] > outputs[0][1]:
                 prediction = 0
             else:
                 prediction = 1
@@ -126,19 +126,32 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
             scan_prediction = 0
             #scan_pred_prob = np.mean(pred_prob_female)
         scan_pred_prob = np.mean(pred_prob_male)
+        """
         scan_GT = labels[0] # type: ignore
 
-        #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [scan_prediction], 'prediction_probability (sex)': [scan_pred_prob]})
-        df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [scan_prediction], 'prediction_probability (diagnosis)': [scan_pred_prob]})
+        # For sex classification
+        df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [max(softmax_out)],
+                                     'prediction_probability male': [softmax_out[0]], 'prediction_probability male': [softmax_out[0]]})
 
+        # For diagnosis classification
+        df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 
+                                    'scan_date': [scan_date], 
+                                    'GT': [scan_GT], 
+                                    'prediction': [max(softmax_out)], 
+                                    'prediction_probability C81(diagnosis)': [softmax_out[0]], 
+                                    'prediction_probability C83 (diagnosis)': [softmax_out[1]], 
+                                    'prediction_probability Others (diagnosis)': [softmax_out[2]]})
+        
         #df_performance = df_performance.append(df_temp_new, ignore_index=True) # type: ignore
         df_performance = pd.concat([df_performance, df_temp_new], ignore_index=True)
 
 
-        pred_prob.append(scan_pred_prob)
+        pred_prob.append(softmax_prob_list)
         GT.append(scan_GT)
 
-    metric = calculate_metrics(pred_prob, np.array(GT).astype(int))
+    #metric = calculate_metrics(pred_prob, np.array(GT).astype(int))
+    metric = calculate_multiclass_metrics(pred_prob, np.array(GT).astype(int))
+
     print("AUC: ", metric)
     metric_values.append(metric)
     #Save the model if metric is increasing
@@ -148,6 +161,28 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
 
     df_performance.to_csv(os.path.join(path_Output, "CV_" + str(k), "Metrics", "epoch_" + str(epoch) + ".csv"))
     return metric_values, best_metric
+
+def calculate_multiclass_metrics(pred_prob, GT):
+    #print("prediction: ", pred_labels)
+    #print("GT: ", GT)
+    # Calculate True Positives (TP), True Negatives (TN), False Positives (FP), and False Negatives (FN)
+    pred_prob = torch.tensor(pred_prob)
+    GT = torch.tensor(GT)
+    sensitivity = multiclass_recall(pred_prob, GT, average=None, num_classes=3) 
+    precision = multiclass_precision(pred_prob, GT, average=None, num_classes=3)
+    specificity = multiclass_accuracy(pred_prob, GT, average=None, num_classes=3)
+    auc = multiclass_auroc(pred_prob, GT, num_classes=3)
+
+    results = [
+        ["Sensitivity", sensitivity],
+        ["Precision", precision],
+        ["Specificity", specificity],
+        ["AUC", auc]
+    ]
+    # Print results in tabular form
+    print(tabulate(results, headers=["Metric", "Value"], tablefmt="fancy_grid"))
+
+    return auc
 
 def calculate_metrics(pred_prob, GT):
     fpr, tpr, thresholds = metrics.roc_curve(GT, pred_prob)
