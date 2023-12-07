@@ -43,10 +43,10 @@ import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import densenet121
 
-experiment = "5"
+experiment = "6"
 k_fold = 10
 learning_rate = 1e-4
-weight_decay = 1e-5
+weight_decay = 1e-3
 batch_size_train = 4
 args = {"num_workers": 4,
         "batch_size_val": 1} #25
@@ -67,7 +67,7 @@ except:
 path_output = "/home/ashish/Ashish/UCAN/Results/regression/experiment_" + experiment + "/"
 outcome = "patient_age" # "mtv"
 
-checkpoint_path = "/home/ashish/Ashish/UCAN/Results/regression/experiment_5/CV_0/Network_Weights/best_model_25.pth.tar"
+checkpoint_path = "/home/ashish/Ashish/UCAN/Results/regression/experiment_6/CV_0/Network_Weights/best_model_46.pth.tar"
 
 pre_trained_weights = True
 
@@ -139,8 +139,8 @@ for k in tqdm(range(k_fold)):
         print(f"Cross validation for fold {k}")
         max_epochs = 500
         val_interval = 1  #5
-        best_metric = 100000000000 #1000000
-        best_metric_epoch = -1
+        best_metric = 7.379 #1000000
+        best_metric_epoch = 46#-1
         metric_values = []
         metric_values_r_squared = []
         print("Network Initialization")
@@ -205,7 +205,7 @@ for k in tqdm(range(k_fold)):
 
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
-            epoch += 26
+            epoch += 47
             #Training
             epoch_loss, train_loss = train_regression(model, train_files, train_loader, optimizer, loss_function, device, train_loss)
             print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}")
