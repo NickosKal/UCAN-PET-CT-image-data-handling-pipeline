@@ -33,8 +33,8 @@ if parent_dir not in sys.path:
 
 from Task4.utils import train_classification, validation_classification, plot_auc
 
-experiment = "4"
-k_fold = 4
+experiment = "5"
+k_fold = 10
 learning_rate = 1e-4
 weight_decay = 1e-5
 batch_size_train = 10
@@ -42,18 +42,31 @@ args = {"num_workers": 4,
         "batch_size_val": 1}
 
 #df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_classification.xlsx")
-df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/dataset_for_training_classification_v2.xlsx")
+#df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/dataset_for_training_classification_v2.xlsx")
+df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/Files/dataset_for_training_366patients_clinical20231129.xlsx")
+
+
 print(df.shape)
 df_sorted = df.sort_values(by="patient_ID")
+df_sorted["GT_diagnosis_label"] = np.where(df_sorted["diagnosis_groups"]=="C81", 0, np.where(df_sorted["diagnosis_groups"]=="C83", 1, 2))
 
+#drop extra columns
+drop_columns = [col for col in df_sorted.columns if 'Unnamed' in col]
 try:
-    df_clean = df_sorted.drop(columns="Unnamed: 0").reset_index(drop=True)
+    df_clean = df_sorted.drop(columns=drop_columns).reset_index(drop=True)
 except:
     df_clean = df_sorted.copy()
 
 #path_output = "/media/andres/T7 Shield1/UCAN_project/Results/classification"
 path_output = "/home/ashish/Ashish/UCAN/Results/classification/experiment_" + experiment + "/"
-outcome = "sex" # diagnosis
+outcome = "GT_diagnosis_label" #"sex" # diagnosis
+
+if outcome == "sex":
+    output_channels = 2
+elif outcome == "GT_diagnosis_label":
+    output_channels = 3
+else:
+    output_channels = 1
 
 #checkpoint_path = "/home/ashish/Ashish/UCAN/pretrained_model_autoPet/classification_sex/best_model_10.pth.tar"
 pre_trained_weights = False
@@ -61,14 +74,14 @@ pre_trained_weights = False
 for k in tqdm(range(k_fold)):
     if k >= 0:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 200
+        max_epochs = 100
         val_interval = 1
         best_metric = 0
         best_metric_epoch = -1
         metric_values = []
         print("Network Initialization")
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = Densenet121(spatial_dims=2, in_channels=10, out_channels=2, init_features=64, dropout_prob=0.25).to(device)
+        model = Densenet121(spatial_dims=2, in_channels=10, out_channels=output_channels, init_features=64, dropout_prob=0.25).to(device)
         
         if pre_trained_weights:
             # Load pre trained weights
@@ -121,10 +134,19 @@ for k in tqdm(range(k_fold)):
         print("Number of patients in Validation set: ", df_val.npr.nunique())
         print("Patient's sex distribution in Validation set: ", df_val.groupby('sex')['npr'].nunique())
 
-        class_freq = np.unique(df_train["sex"], return_counts=True)[1]
-        class_weights = torch.tensor([float(class_freq[0]/np.sum(class_freq)), float(class_freq[1]/np.sum(class_freq))]).to(device)
-        loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
-        
+        if outcome == "sex":
+            class_freq = np.unique(df_train["sex"], return_counts=True)[1]
+            class_weights = torch.tensor([float(class_freq[0]/np.sum(class_freq)), float(class_freq[1]/np.sum(class_freq))]).to(device)
+            print("class_weights_sex: ", class_weights)
+            loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
+        elif outcome == "GT_diagnosis_label":
+            class_freq = np.unique(df_train["GT_diagnosis_label"], return_counts=True)[1]
+            class_weights = torch.tensor([float(class_freq[0]/np.sum(class_freq)), float(class_freq[1]/np.sum(class_freq)), float(class_freq[2]/np.sum(class_freq))]).to(device)
+            print("class_weights_diagnosis: ", class_weights)
+            loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
+        else:
+            loss_function = torch.nn.CrossEntropyLoss()
+
         train_files, train_loader = prepare_data(args, df_train, batch_size_train, shuffle=True, label=outcome)
 
         train_loss = []
