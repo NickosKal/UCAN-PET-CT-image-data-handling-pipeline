@@ -107,6 +107,7 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
             
             softmax_out = outputs.data.cpu().numpy()
             softmax_out = softmax_out[0].tolist()
+
             softmax_prob_list.append(softmax_out)
             #print("outputs: ", outputs)
         """            
@@ -130,17 +131,19 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         scan_GT = labels[0] # type: ignore
 
         # For sex classification
-        df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [max(softmax_out)],
-                                     'prediction_probability male': [softmax_out[0]], 'prediction_probability male': [softmax_out[0]]})
+        if outcome == "sex":
+            df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [softmax_out.index(max(softmax_out)) + 1],
+                                        'prediction_probability male': [softmax_out[0]], 'prediction_probability male': [softmax_out[1]]})
 
         # For diagnosis classification
-        df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 
-                                    'scan_date': [scan_date], 
-                                    'GT': [scan_GT], 
-                                    'prediction': [max(softmax_out)], 
-                                    'prediction_probability C81(diagnosis)': [softmax_out[0]], 
-                                    'prediction_probability C83 (diagnosis)': [softmax_out[1]], 
-                                    'prediction_probability Others (diagnosis)': [softmax_out[2]]})
+        else:
+            df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 
+                                        'scan_date': [scan_date], 
+                                        'GT': [scan_GT], 
+                                        'prediction': [softmax_out.index(max(softmax_out)) + 1], 
+                                        'prediction_probability C81(diagnosis)': [softmax_out[0]], 
+                                        'prediction_probability C83 (diagnosis)': [softmax_out[1]], 
+                                        'prediction_probability Others (diagnosis)': [softmax_out[2]]})
         
         #df_performance = df_performance.append(df_temp_new, ignore_index=True) # type: ignore
         df_performance = pd.concat([df_performance, df_temp_new], ignore_index=True)
