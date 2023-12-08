@@ -31,7 +31,7 @@ parent_dir = os.path.abspath('../')
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from Task4.utils import train_classification, validation_classification, plot_auc
+from Task4.utils_ashish import train_classification, validation_classification, plot_auc
 
 experiment = "5"
 k_fold = 10
@@ -74,7 +74,7 @@ pre_trained_weights = False
 for k in tqdm(range(k_fold)):
     if k >= 0:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 100
+        max_epochs = 50
         val_interval = 1
         best_metric = 0
         best_metric_epoch = -1
@@ -128,18 +128,22 @@ for k in tqdm(range(k_fold)):
 
 
         print("Number of exams in Training set: ", len(df_train))
-        print("Number of patients in Training set: ", df_train.npr.nunique())
-        print("Patient's sex distribution in Training set: ", df_train.groupby('sex')['npr'].nunique())
+        print("Number of patients in Training set: ", df_train.patient_ID.nunique())
         print("Number of exams in Validation set: ", len(df_val))
-        print("Number of patients in Validation set: ", df_val.npr.nunique())
-        print("Patient's sex distribution in Validation set: ", df_val.groupby('sex')['npr'].nunique())
+        print("Number of patients in Validation set: ", df_val.patient_ID.nunique())
 
         if outcome == "sex":
+            print("Patient's sex distribution in Training set: ", df_train.groupby('sex')['patient_ID'].nunique())
+            print("Patient's sex distribution in Validation set: ", df_val.groupby('sex')['patient_ID'].nunique())
+
             class_freq = np.unique(df_train["sex"], return_counts=True)[1]
             class_weights = torch.tensor([float(class_freq[0]/np.sum(class_freq)), float(class_freq[1]/np.sum(class_freq))]).to(device)
             print("class_weights_sex: ", class_weights)
             loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
         elif outcome == "GT_diagnosis_label":
+            print("Patient's diagnosis distribution in Training set: ", df_train.groupby('GT_diagnosis_label')['patient_ID'].nunique())
+            print("Patient's diagnosis distribution in Validation set: ", df_val.groupby('GT_diagnosis_label')['patient_ID'].nunique())
+
             class_freq = np.unique(df_train["GT_diagnosis_label"], return_counts=True)[1]
             class_weights = torch.tensor([float(class_freq[0]/np.sum(class_freq)), float(class_freq[1]/np.sum(class_freq)), float(class_freq[2]/np.sum(class_freq))]).to(device)
             print("class_weights_diagnosis: ", class_weights)

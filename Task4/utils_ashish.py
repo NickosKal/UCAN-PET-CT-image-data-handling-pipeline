@@ -16,13 +16,15 @@ from tqdm import tqdm
 #import cc3d
 import SimpleITK as sitk
 import cv2
-# os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
+os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.ndimage.measurements import label
 #import nibabel as nib
 import scipy.ndimage
 from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.metrics import confusion_matrix, classification_report
+import seaborn as sns
 from torcheval.metrics.functional import multiclass_auroc, multiclass_accuracy, multiclass_recall, multiclass_precision
 from Task4.cross_validation.generate_dataset import prepare_data
 
@@ -80,22 +82,25 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
     #df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction', 'prediction_probability (sex)'])
     df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction', 'prediction_probability (diagnosis)'])
 
-    df_val["unique_pat_ID_scan_date"] = df_val["patient_ID"] + "_" + df_val["scan_date"]
+    df_val["unique_pat_ID_scan_date"] = df_val.apply(lambda x: str(x["patient_ID"]) + "_" + str(x["scan_date"]), axis=1)
     unique_pat_ID_scan_date = np.unique(df_val["unique_pat_ID_scan_date"])
     tp = 0
     fn = 0
     fp = 0
     tn = 0
     pred_prob = []
+    pred = []
     GT = []
     #metric_values = []
 
     for pat_ID_scan_date in tqdm(unique_pat_ID_scan_date):
         #Patient-wise Validation
         df_temp = df_val[df_val["unique_pat_ID_scan_date"]==pat_ID_scan_date].reset_index(drop=True)
-        pat_id = np.unique(df_temp["patient_ID"])
+        #pat_id = np.unique(df_temp["patient_ID"])
+        pat_id, scan_date = pat_ID_scan_date.split('_')
         val_files, val_loader = prepare_data(args, df_temp, args["batch_size_val"], shuffle=False, label=outcome)
-
+        
+        softmax_out = [0, 0, 0]
         softmax_prob_list = []
         for inputs, labels in val_loader:
             model.eval()
@@ -110,13 +115,14 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
             softmax_out = softmax_out[0].tolist()
             softmax_prob_list.append(softmax_out)
             #print("outputs: ", outputs)
-        """            
-        if outputs[0][0] > outputs[0][1]:
+           
+        """
+        if softmax_out[0] > softmax_out[1]:
                 prediction = 0
             else:
                 prediction = 1
             print(prediction)
-            prediction_list.append(prediction)
+            #prediction_list.append(prediction)
             pred_prob_female.append(outputs[0][0])
             pred_prob_male.append(outputs[0][1])
 
@@ -131,27 +137,44 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         scan_GT = labels[0] # type: ignore
 
         # For sex classification
-        df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [max(softmax_out)],
-                                     'prediction_probability male': [softmax_out[0]], 'prediction_probability male': [softmax_out[0]]})
+        if outcome == "sex":
+            df_temp_new = pd.DataFrame({'patient_ID': [pat_id], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [softmax_out.index(max(softmax_out))],
+                                        'prediction_probability male': [softmax_out[0]], 'prediction_probability male': [softmax_out[1]]})
 
         # For diagnosis classification
-        df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 
-                                    'scan_date': [scan_date], 
-                                    'GT': [scan_GT], 
-                                    'prediction': [max(softmax_out)], 
-                                    'prediction_probability C81(diagnosis)': [softmax_out[0]], 
-                                    'prediction_probability C83 (diagnosis)': [softmax_out[1]], 
-                                    'prediction_probability Others (diagnosis)': [softmax_out[2]]})
+        else:
+            df_temp_new = pd.DataFrame({'patient_ID': [pat_id], 
+                                        'scan_date': [scan_date], 
+                                        'GT': [scan_GT], 
+                                        'prediction': [softmax_out.index(max(softmax_out))], 
+                                        'prediction_probability C81(diagnosis)': [softmax_out[0]], 
+                                        'prediction_probability C83 (diagnosis)': [softmax_out[1]], 
+                                        'prediction_probability Others (diagnosis)': [softmax_out[2]]})
+        
         
         #df_performance = df_performance.append(df_temp_new, ignore_index=True) # type: ignore
         df_performance = pd.concat([df_performance, df_temp_new], ignore_index=True)
 
 
-        pred_prob.append(softmax_prob_list)
+        pred_prob.append(softmax_prob_list[0])
+        pred.append(softmax_out.index(max(softmax_out)))
         GT.append(scan_GT)
 
     #metric = calculate_metrics(pred_prob, np.array(GT).astype(int))
+    print("pred_prob: ", pred_prob)
+    print("pred: ", pred)
+    print("GT: ", GT)
+    print("pred len: ", len(pred))
+    print("GT len: ", len(GT))
     metric = calculate_multiclass_metrics(pred_prob, np.array(GT).astype(int))
+
+    if outcome=="GT_diagnosis_label" :
+        idx_classes = ["C81", "C83", "Others"]
+        confusion_matrix_df = pd.DataFrame(confusion_matrix(GT, pred), columns=idx_classes, index=idx_classes)
+        ax = sns.heatmap(confusion_matrix_df, annot=True)
+        print(ax)
+        #plt.title("Classification Confusion Matrix")
+        #plt.show()
 
     print("AUC: ", metric)
     metric_values.append(metric)
