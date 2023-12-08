@@ -43,21 +43,27 @@ import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import densenet121
 
-experiment = 2
+experiment = 7
 k_fold = 10
 learning_rate = 5e-5
 weight_decay = 5e-5
-batch_size_train = 10
+batch_size_train = 14
 args = {"num_workers": 2,
         "batch_size_val": 1} #25
 
-df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_model_regression_training.xlsx")
+#df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_model_regression_training.xlsx")
+
+df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/Files_8dec2023/dataset_for_model_regression_training.xlsx")
+df = df.replace("/media/andres/T7 Shield1/UCAN_project/collages/reshaped_collages", "/home/ashish/Ashish/UCAN/ReshapedCollages/collages", regex=True)
+
 # checkpoint_path = "/media/andres/T7 Shield1/UCAN_project/Results/regression/Experiment_1/CV_0/Network_Weights/best_model_775.pth.tar"
 # df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_regression_v2.xlsx")
-path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression/"
-# path_output = "/home/ashish/Ashish/UCAN/Results/regression/"
+
+#path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression/"
+path_output = "/home/ashish/Ashish/UCAN/Results/regression/"
+
 outcome = "patient_age" # "mtv"
-pre_trained_weights = True
+pre_trained_weights = False
 
 df = df.sort_values(by="scan_date")
 df['scan_date'] = df['scan_date'].astype(str)
@@ -70,7 +76,7 @@ output_path = os.path.join(path_output, "Experiment_" + str(experiment) + "/")
 for k in tqdm(range(k_fold)):
     if k == 0:
         print(f"Cross validation for fold {k}")
-        max_epochs = 50
+        max_epochs = 100
         val_interval = 1 
         best_metric = 100000000000
         best_metric_epoch = -1

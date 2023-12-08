@@ -169,10 +169,11 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
     metric = calculate_multiclass_metrics(pred_prob, np.array(GT).astype(int))
 
     if outcome=="GT_diagnosis_label" :
-        idx_classes = ["C81", "C83", "Others"]
-        confusion_matrix_df = pd.DataFrame(confusion_matrix(GT, pred), columns=idx_classes, index=idx_classes)
-        ax = sns.heatmap(confusion_matrix_df, annot=True)
-        print(ax)
+        idx_classes = ["C81_GT", "C83_GT", "Others_GT"]
+        col_classes = ["C81_Pred", "C83_Pred", "Others_Pred"]
+        confusion_matrix_df = pd.DataFrame(confusion_matrix(GT, pred), columns=col_classes, index=idx_classes)
+        #ax = sns.heatmap(confusion_matrix_df, annot=True)
+        print(confusion_matrix_df)
         #plt.title("Classification Confusion Matrix")
         #plt.show()
 

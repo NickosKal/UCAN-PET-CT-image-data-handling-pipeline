@@ -37,7 +37,7 @@ experiment = "5"
 k_fold = 10
 learning_rate = 1e-4
 weight_decay = 1e-5
-batch_size_train = 10
+batch_size_train = 2
 args = {"num_workers": 4,
         "batch_size_val": 1}
 
@@ -74,7 +74,7 @@ pre_trained_weights = False
 for k in tqdm(range(k_fold)):
     if k >= 0:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 50
+        max_epochs = 100
         val_interval = 1
         best_metric = 0
         best_metric_epoch = -1
