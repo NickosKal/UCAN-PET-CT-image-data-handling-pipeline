@@ -43,11 +43,11 @@ import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import densenet121
 
-experiment = 1
+experiment = 2
 k_fold = 10
 learning_rate = 5e-5
 weight_decay = 5e-5
-batch_size_train = 6
+batch_size_train = 10
 args = {"num_workers": 2,
         "batch_size_val": 1} #25
 
@@ -59,16 +59,20 @@ path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression/"
 outcome = "patient_age" # "mtv"
 pre_trained_weights = True
 
+df = df.sort_values(by="scan_date")
+df['scan_date'] = df['scan_date'].astype(str)
+df['unique_patient_ID_scan_date'] = df['patient_ID'] + '_' + df['scan_date']
+df = df.drop(columns=['patient_ID', 'scan_date'])
 
-df_sorted = df.sort_values(by="patient_ID")
+df = df.sort_values(by="unique_patient_ID_scan_date")
 output_path = os.path.join(path_output, "Experiment_" + str(experiment) + "/")
 
 for k in tqdm(range(k_fold)):
     if k == 0:
         print(f"Cross validation for fold {k}")
-        max_epochs = 1000
-        val_interval = 1 #5
-        best_metric = 100000000000 #1000000
+        max_epochs = 50
+        val_interval = 1 
+        best_metric = 100000000000
         best_metric_epoch = -1
         metric_values = []
         metric_values_r_squared = []
@@ -116,13 +120,13 @@ for k in tqdm(range(k_fold)):
 
         factor = round(df.shape[0]/k_fold)
         if k == (k_fold - 1):
-            patients_for_val = df_sorted[factor*k:].patient_ID.tolist()
-            df_val = df_sorted[df_sorted.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+            patients_for_val = df[factor*k:].unique_patient_ID_scan_date.tolist()
+            df_val = df[df.unique_patient_ID_scan_date.isin(patients_for_val)].reset_index(drop=True)
         else:
-            patients_for_val = df_sorted[factor*k:factor*k+factor].patient_ID.tolist()
-            df_val = df_sorted[df_sorted.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+            patients_for_val = df[factor*k:factor*k+factor].unique_patient_ID_scan_date.tolist()
+            df_val = df[df.unique_patient_ID_scan_date.isin(patients_for_val)].reset_index(drop=True)
 
-        df_train = df_sorted[~df_sorted.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+        df_train = df[~df.unique_patient_ID_scan_date.isin(patients_for_val)].reset_index(drop=True)
 
         print("Number of patients in Training set: ", len(df_train))
         print("Number of patients in Valdation set: ", len(df_val))

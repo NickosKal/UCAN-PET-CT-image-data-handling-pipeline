@@ -70,7 +70,7 @@ for index, row in temp.iterrows():
 
 df_with_nan_arrays = temp[temp['incorrect_projection'] == 'True']
 df_with_nan_arrays = df_with_nan_arrays.drop_duplicates()
-df_with_nan_arrays = df_with_nan_arrays.drop(columns=["incorrect_projection"])
 df_with_nan_arrays.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_arrays_with_nan_arrays.xlsx", index=False)
-df_of_collages_without_nan_arrays = df_of_collages[~df_of_collages.patient_ID.isin(df_with_nan_arrays.patient_ID)]
+df_of_collages_without_nan_arrays = temp[~temp.incorrect_projection.isin(df_with_nan_arrays.incorrect_projection)]
+df_of_collages_without_nan_arrays.drop(columns=['incorrect_projection'])
 df_of_collages_without_nan_arrays.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_collages_without_nan_arrays.xlsx", index=False)
