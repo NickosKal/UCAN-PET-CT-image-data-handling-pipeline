@@ -263,21 +263,21 @@ def train_regression(model, train_files, train_loader, optimizer, loss_function,
     return epoch_loss, loss_values
 
 def validation_regression(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, metric_values_r_squared, path_Output, outcome, loss_function):
-    df_performance = pd.DataFrame(columns=['patient_ID', 'scan_date', 'GT', 'prediction (age)'])
+    df_performance = pd.DataFrame(columns=['unique_patient_ID_scan_date', 'GT', 'prediction (age)'])
     #df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction (MTV (ml))'])
     #df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction (lean_volume (L))'])
     #df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'lesion_count'])
 
-    scan_dates = np.unique(df_val["scan_date"])
+    unique_patient_ID_scan_date = np.unique(df_val["unique_patient_ID_scan_date"])
     prediction = []
     GT = []
     L1_loss = []
     MAE = []
     #metric_values
-    for scan_date in tqdm(scan_dates):
+    for unique_patient_ID_scan_date in tqdm(unique_patient_ID_scan_date):
         #Patient-wise Validation
-        df_temp = df_val[df_val["scan_date"]==scan_date].reset_index(drop=True)
-        pat_id = np.unique(df_temp["patient_ID"])
+        df_temp = df_val[df_val["unique_patient_ID_scan_date"]==unique_patient_ID_scan_date].reset_index(drop=True)
+        # pat_id = np.unique(df_temp["unique_patient_ID_scan_date"])
         #val_files, val_loader = prepare_data(args, df_temp, shuffle=False, label="age")
         val_files, val_loader = prepare_data(args, df_temp, args["batch_size_val"], shuffle=False, label=outcome)
 
@@ -312,7 +312,7 @@ def validation_regression(args, k, epoch, optimizer, model, df_val, device, best
         #print("GT: ", scan_GT)
         #print("Prediction: ", scan_prediction)
 
-        df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction (age)': [scan_prediction]})
+        df_temp_new = pd.DataFrame({'unique_patient_ID_scan_date': [unique_patient_ID_scan_date], 'GT': [scan_GT], 'prediction (age)': [scan_prediction]})
         #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction (MTV (ml))': [scan_prediction]})
         #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction (lean_volume (L))': [scan_prediction]})
         #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'lesion_count': [scan_prediction]})
