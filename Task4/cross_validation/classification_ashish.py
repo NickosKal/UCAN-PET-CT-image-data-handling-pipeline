@@ -33,6 +33,27 @@ if parent_dir not in sys.path:
 
 from Task4.utils_ashish import train_classification, validation_classification, plot_auc
 
+
+def stratified_split(df_clean, k):
+    df_list=[ df_clean[df_clean['GT_diagnosis_label']==x].reset_index(drop=True) for x in range(3) ]
+    factor_list= [ x.shape[0]/k_fold for x in df_list ]
+
+    if k == (k_fold - 1):
+        patients_for_val = []
+        for x,f in zip(df_list,factor_list):
+            patients_for_val.extend(x[f*k].patient_ID.tolist())
+        df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+
+    else:
+        patients_for_val = []
+        for x,f in zip(df_list,factor_list):
+            patients_for_val.extend(x[f*k:f*k+f].patient_ID.tolist())
+        df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+
+    df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+
+    return df_train, df_val
+
 experiment = "5"
 k_fold = 10
 learning_rate = 1e-4
@@ -74,7 +95,7 @@ pre_trained_weights = False
 for k in tqdm(range(k_fold)):
     if k >= 0:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 100
+        max_epochs = 200
         val_interval = 1
         best_metric = 0
         best_metric_epoch = -1
@@ -116,16 +137,17 @@ for k in tqdm(range(k_fold)):
         df_train = df[~df.scan_date.isin(df_val.scan_date)].reset_index(drop=True)
         """
 
-        factor = round(df.shape[0]/k_fold)
-        if k == (k_fold - 1):
-            patients_for_val = df_clean[factor*k:].patient_ID.tolist()
-            df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
-        else:
-            patients_for_val = df_clean[factor*k:factor*k+factor].patient_ID.tolist()
-            df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+        # factor = round(df.shape[0]/k_fold)
+        # if k == (k_fold - 1):
+        #     patients_for_val = df_clean[factor*k:].patient_ID.tolist()
+        #     df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+        # else:
+        #     patients_for_val = df_clean[factor*k:factor*k+factor].patient_ID.tolist()
+        #     df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
 
-        df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+        # df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
 
+        df_train, df_val = stratified_split(df_clean, k)
 
         print("Number of exams in Training set: ", len(df_train))
         print("Number of patients in Training set: ", df_train.patient_ID.nunique())
