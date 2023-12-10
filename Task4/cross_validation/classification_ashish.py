@@ -36,12 +36,12 @@ from Task4.utils_ashish import train_classification, validation_classification, 
 
 def stratified_split(df_clean, k):
     df_list=[ df_clean[df_clean['GT_diagnosis_label']==x].reset_index(drop=True) for x in range(3) ]
-    factor_list= [ x.shape[0]/k_fold for x in df_list ]
+    factor_list= [ round(x.shape[0]/k_fold) for x in df_list ]
 
     if k == (k_fold - 1):
         patients_for_val = []
         for x,f in zip(df_list,factor_list):
-            patients_for_val.extend(x[f*k].patient_ID.tolist())
+            patients_for_val.extend(x[f*k:].patient_ID.tolist())
         df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
 
     else:
@@ -54,18 +54,19 @@ def stratified_split(df_clean, k):
 
     return df_train, df_val
 
-experiment = "5"
+experiment = "1"
 k_fold = 10
 learning_rate = 1e-4
 weight_decay = 1e-5
-batch_size_train = 2
-args = {"num_workers": 4,
+batch_size_train = 10
+args = {"num_workers": 2,
         "batch_size_val": 1}
 
 #df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_classification.xlsx")
 #df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/dataset_for_training_classification_v2.xlsx")
-df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/Files/dataset_for_training_366patients_clinical20231129.xlsx")
-
+df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_366patients_clinical20231129.xlsx")
+for path in ['SUV_MIP', 'CT_MIP', 'SUV_bone', 'CT_bone', 'SUV_lean', 'CT_lean', 'SUV_adipose', 'CT_adipose', 'SUV_air', 'CT_air']:
+    df[path] = df[path].str.replace('/home/ashish/Ashish/UCAN/ReshapedCollages/collages', '/media/andres/T7 Shield1/UCAN_project/collages/reshaped_collages', regex=True)
 
 print(df.shape)
 df_sorted = df.sort_values(by="patient_ID")
@@ -79,8 +80,12 @@ except:
     df_clean = df_sorted.copy()
 
 #path_output = "/media/andres/T7 Shield1/UCAN_project/Results/classification"
-path_output = "/home/ashish/Ashish/UCAN/Results/classification/experiment_" + experiment + "/"
+path_output = "/media/andres/T7 Shield1/UCAN_project/Results/classification"
 outcome = "GT_diagnosis_label" #"sex" # diagnosis
+
+path_output_for_diagnosis = os.path.join(path_output, "Diagnosis" + "/" + "Experiment_" + str(experiment) + "/")
+if not os.path.exists(path_output_for_diagnosis):
+    os.makedirs(path_output_for_diagnosis)
 
 if outcome == "sex":
     output_channels = 2
@@ -95,7 +100,7 @@ pre_trained_weights = False
 for k in tqdm(range(k_fold)):
     if k >= 0:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 200
+        max_epochs = 500
         val_interval = 1
         best_metric = 0
         best_metric_epoch = -1
@@ -148,6 +153,10 @@ for k in tqdm(range(k_fold)):
         # df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
 
         df_train, df_val = stratified_split(df_clean, k)
+        # remove_ids = ['lpr385705046400', 'npr106484754818', 'npr107605794128']
+        # df_train = df_train[df_train.patient_ID.isin(remove_ids)].reset_index(drop=True)
+        # df_val = df_val[df_val.patient_ID.isin(remove_ids)].reset_index(drop=True)
+        # df_train = df_val
 
         print("Number of exams in Training set: ", len(df_train))
         print("Number of patients in Training set: ", df_train.patient_ID.nunique())
@@ -168,8 +177,8 @@ for k in tqdm(range(k_fold)):
 
             class_freq = np.unique(df_train["GT_diagnosis_label"], return_counts=True)[1]
             class_weights = torch.tensor([float(class_freq[0]/np.sum(class_freq)), float(class_freq[1]/np.sum(class_freq)), float(class_freq[2]/np.sum(class_freq))]).to(device)
-            print("class_weights_diagnosis: ", class_weights)
             loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
+
         else:
             loss_function = torch.nn.CrossEntropyLoss()
 

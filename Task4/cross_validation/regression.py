@@ -74,7 +74,7 @@ df = df.sort_values(by="unique_patient_ID_scan_date")
 output_path = os.path.join(path_output, "Experiment_" + str(experiment) + "/")
 
 for k in tqdm(range(k_fold)):
-    if k == 0:
+    if k >= 0:
         print(f"Cross validation for fold {k}")
         max_epochs = 100
         val_interval = 1 
