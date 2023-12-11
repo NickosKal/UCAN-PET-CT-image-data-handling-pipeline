@@ -266,14 +266,14 @@ if __name__ == '__main__':
     exams_with_distorted_files = pd.read_excel("/media/andres/T7 Shield/ucan_lymfom/Excel_files/06_11_2023/exams_with_distorted_images_file.xlsx")
 
     temporary_df = dataset[~dataset.directory.isin(exams_with_distorted_files.directory)]
-    temporary_df[['source_directory', 'patient_directory', 'PET-CT_info']] = temporary_df['directory'].str.rsplit(pat='/', n=2, expand=True)
+    dataset[['source_directory', 'patient_directory', 'PET-CT_info']] = dataset['directory'].str.rsplit(pat='/', n=2, expand=True)
 
     # Uncomment to run on Windows
     # df[['source_directory', 'patient_info']] = df['directory'].str.split(pat='/', n=1, expand=True)
     # df[['patient_directory', 'PET-CT_info']] = df['patient_info'].str.split(pat='\\', n=1, expand=True)
 
-    temporary_df[['system', 'npr', 'scan_date']] = temporary_df['patient_directory'].str.split(pat='_|-', n=2, expand=True)
-    temp_df = temporary_df.groupby(['npr', 'scan_date']).apply(
+    dataset[['system', 'npr', 'scan_date']] = dataset['patient_directory'].str.split(pat='_|-', n=2, expand=True)
+    temp_df = dataset.groupby(['npr', 'scan_date']).apply(
         lambda x: True if x['PET-CT_info'].str.startswith('CT').any() and x['PET-CT_info'].str.startswith(
             'PT').any() else False).reset_index()
 
@@ -281,14 +281,14 @@ if __name__ == '__main__':
     print(str(datetime.now()), ': Writing incomplete folders dataframe to excel')
     temp_df1 = temp_df[temp_df[0] == False].copy()
     print(str(datetime.now()), ': incomplete df shape: ', temp_df1.shape)
-    incomplete_df = pd.merge(temp_df1, temporary_df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
+    incomplete_df = pd.merge(temp_df1, dataset, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
     incomplete_df.to_excel(incomplete_folders_before_filtering)
 
     # complete folders
     print(str(datetime.now()), ': Filtering complete folders dataframe to continue execution')
     temp_df2 = temp_df[temp_df[0] == True].copy()
     print(str(datetime.now()), ': complete df shape: ', temp_df2.shape)
-    new_df = pd.merge(temp_df2, temporary_df, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
+    new_df = pd.merge(temp_df2, dataset, how="inner", on=['npr', 'scan_date'], sort=True, suffixes=("_x", "_y"))
     print(str(datetime.now()), ': Shape before dropping na value: ', new_df.shape)
     pre_sorted_df = new_df.dropna()
     print(str(datetime.now()), ': Shape after dropping na value: ', pre_sorted_df.shape)

@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 from scipy.ndimage.measurements import label
 #import nibabel as nib
 import scipy.ndimage
-from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.metrics import confusion_matrix, mean_absolute_error, r2_score
 from torcheval.metrics.functional import multiclass_auroc, multiclass_accuracy, multiclass_recall, multiclass_precision
 from Task4.cross_validation.generate_dataset import prepare_data
 
@@ -78,24 +78,26 @@ def save_model(model, epoch, optimizer, k, path_Output):
 
 def validation_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_Output, outcome):
     #df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction', 'prediction_probability (sex)'])
-    df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction', 'prediction_probability (diagnosis)'])
+    df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction'])
 
-    scan_dates = np.unique(df_val["scan_date"])
+    df_val["unique_pat_ID_scan_date"] = df_val.apply(lambda x: str(x["patient_ID"]) + "_" + str(x["scan_date"]), axis=1)
+    unique_pat_ID_scan_date = np.unique(df_val["unique_pat_ID_scan_date"])
     tp = 0
     fn = 0
     fp = 0
     tn = 0
     pred_prob = []
+    pred = []
     GT = []
     #metric_values = []
 
-    for scan_date in tqdm(scan_dates):
+    for pat_ID_scan_date in tqdm(unique_pat_ID_scan_date):
         #Patient-wise Validation
-        df_temp = df_val[df_val["scan_date"]==scan_date].reset_index(drop=True)
-        pat_id = np.unique(df_temp["patient_ID"])
+        df_temp = df_val[df_val["unique_pat_ID_scan_date"]==unique_pat_ID_scan_date].reset_index(drop=True)
+        pat_id, scan_date = pat_ID_scan_date.split('_')
         val_files, val_loader = prepare_data(args, df_temp, args["batch_size_val"], shuffle=False, label=outcome)
 
-        softmax_prob_list = []
+        softmax_prob_list = [0, 0, 0]
         for inputs, labels in val_loader:
             model.eval()
 
@@ -132,7 +134,7 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
 
         # For sex classification
         if outcome == "sex":
-            df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [softmax_out.index(max(softmax_out)) + 1],
+            df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [softmax_out.index(max(softmax_out))],
                                         'prediction_probability male': [softmax_out[0]], 'prediction_probability male': [softmax_out[1]]})
 
         # For diagnosis classification
@@ -140,7 +142,7 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
             df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 
                                         'scan_date': [scan_date], 
                                         'GT': [scan_GT], 
-                                        'prediction': [softmax_out.index(max(softmax_out)) + 1], 
+                                        'prediction': [softmax_out.index(max(softmax_out))], 
                                         'prediction_probability C81(diagnosis)': [softmax_out[0]], 
                                         'prediction_probability C83 (diagnosis)': [softmax_out[1]], 
                                         'prediction_probability Others (diagnosis)': [softmax_out[2]]})
@@ -150,11 +152,28 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
 
 
         pred_prob.append(softmax_prob_list)
+        pred.append(softmax_out.index(max(softmax_out)))
         GT.append(scan_GT)
 
+    print("pred_prob: ", pred_prob)
+    print("pred: ", pred)
+    print("GT: ", GT)
+    print("pred len: ", len(pred))
+    print("GT len: ", len(GT))
+          
     #metric = calculate_metrics(pred_prob, np.array(GT).astype(int))
     metric = calculate_multiclass_metrics(pred_prob, np.array(GT).astype(int))
 
+
+    if outcome=="GT_diagnosis_label" :
+        idx_classes = ["C81_GT", "C83_GT", "Others_GT"]
+        col_classes = ["C81_Pred", "C83_Pred", "Others_Pred"]
+        confusion_matrix_df = pd.DataFrame(confusion_matrix(GT, pred), columns=col_classes, index=idx_classes)
+        #ax = sns.heatmap(confusion_matrix_df, annot=True)
+        print(confusion_matrix_df)
+        #plt.title("Classification Confusion Matrix")
+        #plt.show()
+        
     print("AUC: ", metric)
     metric_values.append(metric)
     #Save the model if metric is increasing
@@ -162,7 +181,7 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         best_metric = metric
         save_model(model, epoch, optimizer, k, path_Output)
 
-    df_performance.to_csv(os.path.join(path_Output, "CV_" + str(k), "Metrics", "epoch_" + str(epoch) + ".csv"))
+    df_performance.to_csv(os.path.join(path_Output, "CV_" + str(k), "Metrics", "epoch_" + str(epoch) + ".csv"), index=False)
     return metric_values, best_metric
 
 def calculate_multiclass_metrics(pred_prob, GT):

@@ -33,6 +33,26 @@ if parent_dir not in sys.path:
 
 from Task4.utils import train_classification, validation_classification, plot_auc
 
+def stratified_split(df_clean, k):
+    df_list=[ df_clean[df_clean['GT_diagnosis_label']==x].reset_index(drop=True) for x in range(3) ]
+    factor_list= [ round(x.shape[0]/k_fold) for x in df_list ]
+
+    if k == (k_fold - 1):
+        patients_for_val = []
+        for x,f in zip(df_list,factor_list):
+            patients_for_val.extend(x[f*k:].patient_ID.tolist())
+        df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+
+    else:
+        patients_for_val = []
+        for x,f in zip(df_list,factor_list):
+            patients_for_val.extend(x[f*k:f*k+f].patient_ID.tolist())
+        df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+
+    df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+
+    return df_train, df_val
+
 experiment = 1
 k_fold = 10
 learning_rate = 5e-5
@@ -43,6 +63,7 @@ args = {"num_workers": 2,
 
 df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_model_classification_training.xlsx")
 df_sorted = df.sort_values(by="patient_ID")
+df_sorted["GT_diagnosis_label"] = np.where(df_sorted["diagnosis_groups"]=="C81", 0, np.where(df_sorted["diagnosis_groups"]=="C83", 1, 2))
 
 outcome = "GT_diagnosis_label" # sex
 path_output = "/media/andres/T7 Shield1/UCAN_project/Results/classification/"
@@ -54,6 +75,13 @@ if not os.path.exists(path_output_for_sex):
 path_output_for_diagnosis = os.path.join(path_output, "Diagnosis" + "/" + "Experiment_" + str(experiment) + "/")
 if not os.path.exists(path_output_for_diagnosis):
     os.makedirs(path_output_for_diagnosis)
+
+if outcome == "sex":
+    output_channels = 2
+elif outcome == "GT_diagnosis_label":
+    output_channels = 3
+else:
+    output_channels = 1
 
 pre_trained_weights = False
 
@@ -69,7 +97,7 @@ for k in tqdm(range(k_fold)):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # device = "cpu"
         print(device)
-        model = Densenet121(spatial_dims=2, in_channels=10, out_channels=3, init_features=64, dropout_prob=0.25).to(device)
+        model = Densenet121(spatial_dims=2, in_channels=10, out_channels=output_channels, init_features=64, dropout_prob=0.25).to(device)
         
         if pre_trained_weights:
             # Load pre trained weights
@@ -93,35 +121,45 @@ for k in tqdm(range(k_fold)):
         if not os.path.exists(path_output_for_diagnosis+"CV_"+str(k)+'/MIPs/'):
             os.makedirs(path_output_for_diagnosis+"CV_"+str(k)+'/MIPs/')
 
-        factor = round(df.shape[0]/k_fold)
-        if k == (k_fold - 1):
-            patients_for_val = df[factor*k:].patient_ID.tolist()
-            df_val = df[df.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+        # factor = round(df.shape[0]/k_fold)
+        # if k == (k_fold - 1):
+        #     patients_for_val = df[factor*k:].patient_ID.tolist()
+        #     df_val = df[df.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+        # else:
+        #     patients_for_val = df[factor*k:factor*k+factor].patient_ID.tolist()
+        #     df_val = df[df.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+        
+        df_train, df_val = stratified_split(df_sorted, k)
+
+        print("Number of exams in Training set: ", len(df_train))
+        print("Number of patients in Training set: ", df_train.patient_ID.nunique())
+        print("Number of exams in Validation set: ", len(df_val))
+        print("Number of patients in Validation set: ", df_val.patient_ID.nunique())
+
+        if outcome == "sex":
+            print("Patient's sex distribution in Training set: ", df_train.groupby('sex')['patient_ID'].nunique())
+            print("Patient's sex distribution in Validation set: ", df_val.groupby('sex')['patient_ID'].nunique())
+
+            class_freq = np.unique(df_train["sex"], return_counts=True)[1]
+            class_weights = torch.tensor([float(class_freq[0]/np.sum(class_freq)), float(class_freq[1]/np.sum(class_freq))]).to(device)
+            print("class_weights_sex: ", class_weights)
+            loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
+        elif outcome == "GT_diagnosis_label":
+            print("Patient's diagnosis distribution in Training set: ", df_train.groupby('GT_diagnosis_label')['patient_ID'].nunique())
+            print("Patient's diagnosis distribution in Validation set: ", df_val.groupby('GT_diagnosis_label')['patient_ID'].nunique())
+
+            class_freq = np.unique(df_train["GT_diagnosis_label"], return_counts=True)[1]
+            class_weights = torch.tensor([float(class_freq[0]/np.sum(class_freq)), float(class_freq[1]/np.sum(class_freq)), float(class_freq[2]/np.sum(class_freq))]).to(device)
+            loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
+
         else:
-            patients_for_val = df[factor*k:factor*k+factor].patient_ID.tolist()
-            df_val = df[df.patient_ID.isin(patients_for_val)].reset_index(drop=True)
-        
-        df_train = df[~df.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+            loss_function = torch.nn.CrossEntropyLoss()
 
-        print("Number of patients in Training set: ", len(df_train))
-        print("Number of patients in Validation set: ", len(df_val))
-
-        class_freq_diagnosis = np.unique(df_train["GT_diagnosis_label"], return_counts=True)[1]
-        class_weights_diagnosis = torch.tensor([float(class_freq_diagnosis[0]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[1]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[2]/np.sum(class_freq_diagnosis))]).to(device)
-        print("class_weights_diagnosis: ", class_weights_diagnosis)
-        loss_function_diagnosis = torch.nn.CrossEntropyLoss(weight=class_weights_diagnosis)
-
-        # Use this when training for sex classification
-        class_freq_sex = np.unique(df_train["sex"], return_counts=True)[1]
-        class_weights_sex = torch.tensor([float(class_freq_sex[0]/np.sum(class_freq_sex)), float(class_freq_sex[1]/np.sum(class_freq_sex))]).to(device)
-        loss_function_sex = torch.nn.CrossEntropyLoss(weight=class_weights_sex)
-
-        
         train_files, train_loader = prepare_data(args, df_train, batch_size_train, shuffle=True, label=outcome)
 
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
-            epoch_loss, train_loss = train_classification(model, train_loader, optimizer, loss_function_diagnosis, device, train_loss, outcome)
+            epoch_loss, train_loss = train_classification(model, train_loader, optimizer, loss_function, device, train_loss, outcome)
             print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}")
 
             if (epoch + 1) % val_interval == 0:

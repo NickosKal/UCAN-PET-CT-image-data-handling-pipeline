@@ -184,7 +184,7 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         best_metric = metric
         save_model(model, epoch, optimizer, k, path_Output)
 
-    df_performance.to_csv(os.path.join(path_Output, "CV_" + str(k), "Metrics", "epoch_" + str(epoch) + ".csv"))
+    df_performance.to_csv(os.path.join(path_Output, "CV_" + str(k), "Metrics", "epoch_" + str(epoch) + ".csv"), index=False)
     return metric_values, best_metric
 
 def calculate_multiclass_metrics(pred_prob, GT):
