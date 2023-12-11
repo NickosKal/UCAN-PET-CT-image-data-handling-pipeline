@@ -31,7 +31,7 @@ parent_dir = os.path.abspath('../')
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from Task4.utils_ashish import train_classification, validation_classification, plot_auc
+from Task4.utils_ashish import train_classification, validation_classification, plot_auc, plot_c_k_score
 
 
 def stratified_split(df_clean, k):
@@ -54,6 +54,7 @@ def stratified_split(df_clean, k):
 
     return df_train, df_val
 
+classification = 'diagnosis' #or 'sex'
 experiment = "1"
 k_fold = 10
 learning_rate = 1e-4
@@ -79,20 +80,15 @@ try:
 except:
     df_clean = df_sorted.copy()
 
-#path_output = "/media/andres/T7 Shield1/UCAN_project/Results/classification"
-path_output = "/media/andres/T7 Shield1/UCAN_project/Results/classification"
-outcome = "GT_diagnosis_label" #"sex" # diagnosis
-
-path_output_for_diagnosis = os.path.join(path_output, "Diagnosis" + "/" + "Experiment_" + str(experiment) + "/")
-if not os.path.exists(path_output_for_diagnosis):
-    os.makedirs(path_output_for_diagnosis)
-
-if outcome == "sex":
-    output_channels = 2
-elif outcome == "GT_diagnosis_label":
+classification_save_path = "/media/andres/T7 Shield1/UCAN_project/Results/classification"
+if classification == 'diagnosis':
+    path_output = os.path.join(classification_save_path, "Diagnosis" + "/" + "Experiment_" + str(experiment) + "/")
+    outcome = "GT_diagnosis_label"
     output_channels = 3
 else:
-    output_channels = 1
+    path_output = os.path.join(classification_save_path, "Sex" + "/" + "Experiment_" + str(experiment) + "/")
+    outcome = "sex"
+    output_channels = 2
 
 #checkpoint_path = "/home/ashish/Ashish/UCAN/pretrained_model_autoPet/classification_sex/best_model_10.pth.tar"
 pre_trained_weights = False
@@ -100,7 +96,7 @@ pre_trained_weights = False
 for k in tqdm(range(k_fold)):
     if k >= 0:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 500
+        max_epochs = 100
         val_interval = 1
         best_metric = 0
         best_metric_epoch = -1
@@ -193,7 +189,7 @@ for k in tqdm(range(k_fold)):
                 metric_values, best_metric_new = validation_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_output, outcome)
                 best_metric = best_metric_new
 
-            np.save(os.path.join(path_output, "CV_" + str(k) + "/AUC.npy"), metric_values)
-            path_dice = os.path.join(path_output, "CV_" + str(k), "epoch_vs_auc.jpg")
+            np.save(os.path.join(path_output, "CV_" + str(k) + "/c_k_score.npy"), metric_values)
+            path_dice = os.path.join(path_output, "CV_" + str(k), "epoch_vs_c_k_score.jpg")
             if len(metric_values) > 2:
-                plot_auc(metric_values, path_dice)
+                plot_c_k_score(metric_values, path_dice)

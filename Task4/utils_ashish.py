@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 from scipy.ndimage.measurements import label
 #import nibabel as nib
 import scipy.ndimage
-from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.metrics import mean_absolute_error, r2_score, cohen_kappa_score
 from sklearn.metrics import confusion_matrix, classification_report
 import seaborn as sns
 from torcheval.metrics.functional import multiclass_auroc, multiclass_accuracy, multiclass_recall, multiclass_precision
@@ -177,7 +177,9 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         #plt.title("Classification Confusion Matrix")
         #plt.show()
 
-    print("AUC: ", metric)
+
+    #Previously Auc, moving on to C_K_Score
+    print("Cohen Kappa score: ", metric)
     metric_values.append(metric)
     #Save the model if metric is increasing
     if metric > best_metric:
@@ -191,6 +193,9 @@ def calculate_multiclass_metrics(pred_prob, GT):
     #print("prediction: ", pred_labels)
     #print("GT: ", GT)
     # Calculate True Positives (TP), True Negatives (TN), False Positives (FP), and False Negatives (FN)
+
+    c_k_score = cohen_kappa_score(np.argmax(np.array(pred_prob),axis=1), GT)
+
     pred_prob = torch.tensor(pred_prob)
     GT = torch.tensor(GT)
     sensitivity = multiclass_recall(pred_prob, GT, average=None, num_classes=3) 
@@ -202,12 +207,15 @@ def calculate_multiclass_metrics(pred_prob, GT):
         ["Sensitivity", sensitivity],
         ["Precision", precision],
         ["Specificity", specificity],
-        ["AUC", auc]
+        ["AUC", auc],
+        ["Cohen Kappa Score", c_k_score]
     ]
     # Print results in tabular form
     print(tabulate(results, headers=["Metric", "Value"], tablefmt="fancy_grid"))
 
-    return auc
+
+    #Returning the c_k_score instead of Auc here
+    return c_k_score
 
 def calculate_metrics(pred_prob, GT):
     fpr, tpr, thresholds = metrics.roc_curve(GT, pred_prob)
@@ -381,7 +389,15 @@ def plot_auc(dice, path):
     plt.xlabel("Number of Epochs")
     plt.ylabel("AUC")
 
-def plot(dice, path, name=None):
+
+def plot_c_k_score(dice, path):
+    epoch = [1 * (i + 1) for i in range(len(dice))]
+    plt.plot(epoch, dice)
+    plt.savefig(path, dpi=400)
+    plt.xlabel("Number of Epochs")
+    plt.ylabel("AUC")
+
+def plot(dice, path, name='N'):
     epoch = [1 * (i + 1) for i in range(len(dice))]
     plt.plot(epoch, dice)
     plt.xlabel("Number of Epochs")
