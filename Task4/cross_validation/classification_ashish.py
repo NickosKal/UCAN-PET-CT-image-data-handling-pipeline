@@ -96,7 +96,7 @@ pre_trained_weights = False
 for k in tqdm(range(k_fold)):
     if k >= 0:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 100
+        max_epochs = 500
         val_interval = 1
         best_metric = 0
         best_metric_epoch = -1
@@ -146,7 +146,7 @@ for k in tqdm(range(k_fold)):
         #     patients_for_val = df_clean[factor*k:factor*k+factor].patient_ID.tolist()
         #     df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
 
-        # df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+        # df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)Changed the metric to cohen].reset_index(drop=True)
 
         df_train, df_val = stratified_split(df_clean, k)
         # remove_ids = ['lpr385705046400', 'npr106484754818', 'npr107605794128']
@@ -183,7 +183,7 @@ for k in tqdm(range(k_fold)):
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
             epoch_loss, train_loss = train_classification(model, train_loader, optimizer, loss_function, device, train_loss, outcome)
-            print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}")
+            print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}Changed the metric to cohen")
 
             if (epoch + 1) % val_interval == 0:
                 metric_values, best_metric_new = validation_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_output, outcome)
