@@ -183,7 +183,7 @@ for k in tqdm(range(k_fold)):
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
             epoch_loss, train_loss = train_classification(model, train_loader, optimizer, loss_function, device, train_loss, outcome)
-            print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}Changed the metric to cohen")
+            print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}") #Changed the metric to c_k_score
 
             if (epoch + 1) % val_interval == 0:
                 metric_values, best_metric_new = validation_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_output, outcome)
