@@ -10,16 +10,79 @@ from monai.transforms import Compose, LoadImage, ToTensor, ScaleIntensity
 from tqdm import tqdm
 import pandas as pd
 import os
+os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-model = DenseNet121(spatial_dims=2, in_channels=10,
-                    out_channels=1, dropout_prob=0.0).cuda()
+def main():
+    model = DenseNet121(spatial_dims=2, in_channels=10,
+                        out_channels=1, dropout_prob=0.0).cuda()
 
-#checkpoint_path = "/media/andres/T7 Shield1/UCAN_project/Results/regression/Experiment_1/CV_0/Network_Weights/best_model_847.pth.tar"
-checkpoint_path = "/home/ashish/Ashish/UCAN/ReshapedCollages/bestmodel_ageprediction/best_model_847.pth.tar"
-checkpoint = torch.load(checkpoint_path)
-model.load_state_dict(checkpoint['net'])
+    cv_0 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_0/Network_Weights/best_model_169.pth.tar"
+    cv_1 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_1/Network_Weights/best_model_81.pth.tar"
+    cv_2 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_2/Network_Weights/best_model_99.pth.tar"
+    cv_3 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_3/Network_Weights/best_model_96.pth.tar"
+    cv_4 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_4/Network_Weights/best_model_88.pth.tar"
+    cv_5 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_5/Network_Weights/best_model_86.pth.tar"
+    cv_6 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_6/Network_Weights/best_model_52.pth.tar"
+    cv_7 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_7/Network_Weights/best_model_648.pth.tar"
+    cv_8 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_8/Network_Weights/best_model_96.pth.tar"
+    cv_9 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_9/Network_Weights/best_model_67.pth.tar"
+    
+    K = 10
+    k = 0
+
+    if k == 0:
+        checkpoint_path = cv_0
+    elif k == 1:
+        checkpoint_path = cv_1
+    elif k == 2:
+        checkpoint_path = cv_2
+    elif k == 3:
+        checkpoint_path = cv_3
+    elif k == 4:
+        checkpoint_path = cv_4
+    elif k == 5:
+        checkpoint_path = cv_5
+    elif k == 6:
+        checkpoint_path = cv_6
+    elif k == 7:
+        checkpoint_path = cv_7
+    elif k == 8:
+        checkpoint_path = cv_8
+    elif k == 9:
+        checkpoint_path = cv_9
+
+    checkpoint = torch.load(checkpoint_path)
+    model.load_state_dict(checkpoint['net'])
+
+    df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/Files/dataset_for_model_regression_training.xlsx")
+    df = df.replace('/media/andres/T7 Shield1/UCAN_project/collages/reshaped_collages', '/home/ashish/Ashish/UCAN/ReshapedCollages/collages', regex=True)
+
+    df_rot_mips_collages = df.copy()
+    df_sorted = df_rot_mips_collages.sort_values(by="patient_ID")
+
+    df_sorted["scan_date"] = df_sorted["scan_date"].astype(str)
+    df_sorted["unique_pat_ID_scan_date"] = df_sorted["patient_ID"] + "_" + df_sorted["scan_date"]
+
+
+    factor = round(df.shape[0]/K)
+    if k == (K - 1):
+        patients_for_val = df_sorted[factor*k:].patient_ID.tolist()
+        df_val = df_sorted[df_sorted.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+    else:
+        patients_for_val = df_sorted[factor*k:factor*k+factor].patient_ID.tolist()
+        df_val = df_sorted[df_sorted.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+
+    df_train = df[~df.patient_ID.isin(df_val.patient_ID)].reset_index(drop=True)
+
+    df_train_new = df_train
+    df_val_new = df_val
+
+    for idx, row in df_val.iterrows():
+        patient_ID = row["patient_ID"]
+        scan_date = row["scan_date"]
+
+        grad_cam_analysis(patient_ID, scan_date, model)
 
 class ImageDataset(Dataset):
     def __init__(self, SUV_MIP_files, SUV_bone_files, SUV_lean_files, SUV_adipose_files, SUV_air_files, CT_MIP_files, CT_bone_files, CT_lean_files, CT_adipose_files, CT_air_files, labels):
@@ -155,100 +218,80 @@ def prepare_data(df_train, batch_size, shuffle=None, label=None):
     ]
 
     train_ds = ImageDataset(SUV_MIP_train, SUV_bone_train, SUV_lean_train, SUV_adipose_train, SUV_air_train, CT_MIP_train, CT_bone_train, CT_lean_train, CT_adipose_train, CT_air_train, label_train)
-    train_loader = DataLoader(train_ds, batch_size=1, shuffle=False)
+    train_loader = DataLoader(train_ds, batch_size=1, shuffle=True)
 
     return train_files, train_loader
 
 
-def generate_heatmap(patient_ID):
+def grad_cam_analysis(patient_ID, scan_date, model):
 
+    df_temp = pd.DataFrame(columns=["patient_ID", "scan_date"])
+    df_temp["patient_ID"] = [str(patient_ID)]
+    df_temp["scan_date"] = [str(scan_date)]
+
+    df_temp["unique_pat_ID_scan_date"] = df_temp["patient_ID"] + "_" + df_temp["scan_date"]
+    df_temp["SUV_MIP"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/SUV_MIP.npy"]
+    df_temp["SUV_bone"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/SUV_bone.npy"]
+    df_temp["SUV_lean"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/SUV_lean.npy"]
+    df_temp["SUV_adipose"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/SUV_adipose.npy"]
+    df_temp["SUV_air"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/SUV_air.npy"]
+    df_temp["CT_MIP"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/CT_MIP.npy"]
+    df_temp["CT_bone"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/CT_bone.npy"]
+    df_temp["CT_lean"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/CT_lean.npy"]
+    df_temp["CT_adipose"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/CT_adipose.npy"]
+    df_temp["CT_air"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/CT_air.npy"]
+    df_temp["patient_age"] = [33]
+    
     layers_to_visualize = [model.features.transition3, model.features.transition2,
                        model.features.transition1, model.features.conv0]
     
     grad_cam = GradCAM(model, layers_to_visualize)
 
-    val_files, val_loader = prepare_data(patient_ID)
-    heatmaps = grad_cam.generate_heatmap(inputs)
-
-
-K = 10
-k = 9
-
-df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/Files/dataset_for_model_regression_training.xlsx")
-df = df.replace('/media/andres/T7 Shield1/UCAN_project/collages/reshaped_collages', '/home/ashish/Ashish/UCAN/ReshapedCollages/collages', regex=True)
-
-factor = round(df.shape[0]/K)
-if k == (K - 1):
-    df_val = df[factor*k:].reset_index(drop=True)
-else:
-    df_val = df[factor*k:factor*k+factor].reset_index(drop=True)
-df_train = df[~df.scan_date.isin(df_val.scan_date)].reset_index(drop=True)
-
-df_train_new = df[df.scan_date.isin(df_train.scan_date)].reset_index(drop=True)
-df_val_new = df[df.scan_date.isin(df_val.scan_date)].reset_index(drop=True)
-
-scan_dates = np.unique(df_val_new["scan_date"])
-np.random.shuffle(scan_dates)
-
-for scan_date in tqdm(scan_dates):
-    df_temp = df_val_new[df_val_new["scan_date"]==scan_date].reset_index(drop=True)
-    #df_temp = df_val_new[df_val_new["scan_date"]=="03-27-2005-NA-PET-CT Ganzkoerper  primaer mit KM-38725"].reset_index(drop=True)
-    
-    pat_id = np.unique(df_temp["patient_ID"])
-    #val_files, val_loader = prepare_data(args, df_temp, shuffle=False, label="age")
     val_files, val_loader = prepare_data(df_temp, 1, shuffle=True, label="patient_age")
-    
+
+
     for inputs, labels in val_loader:
         model.eval()
         inputs, labels = inputs.cuda(), labels.cuda()
 
+        heatmaps = grad_cam.generate_heatmap(inputs)
 
-layers_to_visualize = [model.features.transition3, model.features.transition2,
-                       model.features.transition1, model.features.conv0]
+        # Resize heatmaps to match the original image size
+        resized_heatmaps = []
+        for heatmap in heatmaps:
+            resized_heatmap = nn.functional.interpolate(heatmap, size=(580, 512), mode='bilinear', align_corners=False)
+            resized_heatmaps.append(resized_heatmap)
 
-# Create Grad-CAM instance
-grad_cam = GradCAM(model, layers_to_visualize)
+        i = inputs[0,0,:,:].data.cpu().numpy()
+        h = resized_heatmaps[1][0,0,:,:].data.cpu().numpy()
 
-# Generate and visualize heatmaps for each layer
-heatmaps = grad_cam.generate_heatmap(inputs)
+        # Normalize the heatmap values
+        heatmap_normalized = h / np.max(h)
 
-# Resize heatmaps to match the original image size
-resized_heatmaps = []
-for heatmap in heatmaps:
-    resized_heatmap = nn.functional.interpolate(heatmap, size=(512, 512), mode='bilinear', align_corners=False)
-    resized_heatmaps.append(resized_heatmap)
+        # Set a transparency factor for the heatmap overlay
+        alpha = 0.7
 
-i = inputs[0,0,:,:].data.cpu().numpy()
-h = resized_heatmaps[1][0,0,:,:].data.cpu().numpy()
+        # Overlay the heatmap on the image using element-wise addition and transparency
+        overlayed_image = alpha * heatmap_normalized + (1 - alpha) * i
 
-# Normalize the heatmap values
-heatmap_normalized = h / np.max(h)
+        # Clip values to stay within [0, 1] range
+        overlayed_image = np.clip(overlayed_image, 0, 1)
 
-# Set a transparency factor for the heatmap overlay
-alpha = 0.7
+        output_path = "/home/ashish/Ashish/UCAN/Results/GradCam_analysis"
+        save_path = os.path.join(output_path, patient_ID, scan_date)
 
-# Overlay the heatmap on the image using element-wise addition and transparency
-overlayed_image = alpha * heatmap_normalized + (1 - alpha) * i
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
 
-# Clip values to stay within [0, 1] range
-overlayed_image = np.clip(overlayed_image, 0, 1)
+        plt.imshow(overlayed_image, cmap="coolwarm")
 
-output_path = "/media/sambit/HDD/Sambit/Projects/Project_6/Data_Analysis/gradcam-mathod/Output/Age"
-save_path = os.path.join(output_path, pat_id[0])
+        plt.savefig(save_path + "/overlap.jpg", dpi=400)
+        #plt.show()
 
-if not os.path.exists(save_path):
-    os.makedirs(save_path)
+        plt.imshow(i, cmap="gray")
 
-plt.imshow(overlayed_image, cmap="coolwarm")
-#plt.imshow(overlayed_image, cmap="RdYlBu_r")
+        plt.savefig(save_path + "/img.jpg", dpi=400)
+        print(patient_ID)
 
-plt.savefig(save_path + "/overlap.jpg", dpi=400)
-#plt.show()
-#plt.imshow(i, cmap="gray")
-
-plt.imshow(i, cmap="gray")
-#plt.imshow(overlayed_image, cmap="RdYlBu_r")
-
-plt.savefig(save_path + "/img.jpg", dpi=400)
-print(pat_id)
-
+if __name__ == "__main__":
+    main()
