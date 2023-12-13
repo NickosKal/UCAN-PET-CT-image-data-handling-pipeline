@@ -84,10 +84,6 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
 
     df_val["unique_pat_ID_scan_date"] = df_val.apply(lambda x: str(x["patient_ID"]) + "_" + str(x["scan_date"]), axis=1)
     unique_pat_ID_scan_date = np.unique(df_val["unique_pat_ID_scan_date"])
-    tp = 0
-    fn = 0
-    fp = 0
-    tn = 0
     pred_prob = []
     pred = []
     GT = []
@@ -106,7 +102,6 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
             model.eval()
 
             labels = torch.LongTensor(labels)
-            #labels = labels.type(torch.LongTensor)
             inputs, labels = inputs.to(device), labels.numpy()
             #inputs = torch.unsqueeze(inputs, dim=0)
             outputs= torch.nn.Softmax(dim=1)(model(inputs))
@@ -161,9 +156,6 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         GT.append(scan_GT)
 
     #metric = calculate_metrics(pred_prob, np.array(GT).astype(int))
-    print("pred_prob: ", pred_prob)
-    print("pred: ", pred)
-    print("GT: ", GT)
     print("pred len: ", len(pred))
     print("GT len: ", len(GT))
     metric = calculate_multiclass_metrics(pred_prob, np.array(GT).astype(int))
