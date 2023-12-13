@@ -43,10 +43,10 @@ import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import densenet121
 
-experiment = 7
+experiment = 8
 k_fold = 10
-learning_rate = 5e-5
-weight_decay = 5e-5
+learning_rate = 1e-4
+weight_decay = 1e-5
 batch_size_train = 14
 args = {"num_workers": 2,
         "batch_size_val": 1} #25
@@ -56,14 +56,14 @@ args = {"num_workers": 2,
 df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/Files_8dec2023/dataset_for_model_regression_training.xlsx")
 df = df.replace("/media/andres/T7 Shield1/UCAN_project/collages/reshaped_collages", "/home/ashish/Ashish/UCAN/ReshapedCollages/collages", regex=True)
 
-# checkpoint_path = "/media/andres/T7 Shield1/UCAN_project/Results/regression/Experiment_1/CV_0/Network_Weights/best_model_775.pth.tar"
+checkpoint_path = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_0/Network_Weights/best_model_74.pth.tar"
 # df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_regression_v2.xlsx")
 
 #path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression/"
 path_output = "/home/ashish/Ashish/UCAN/Results/regression/"
 
 outcome = "patient_age" # "mtv"
-pre_trained_weights = False
+pre_trained_weights = True
 
 df = df.sort_values(by="scan_date")
 df['scan_date'] = df['scan_date'].astype(str)
@@ -74,9 +74,9 @@ df = df.sort_values(by="unique_patient_ID_scan_date")
 output_path = os.path.join(path_output, "Experiment_" + str(experiment) + "/")
 
 for k in tqdm(range(k_fold)):
-    if k >= 0:
+    if k == 0:
         print(f"Cross validation for fold {k}")
-        max_epochs = 100
+        max_epochs = 1000
         val_interval = 1 
         best_metric = 100000000000
         best_metric_epoch = -1
@@ -90,11 +90,10 @@ for k in tqdm(range(k_fold)):
         
         if pre_trained_weights:
             # Use it in case we have pre trained weights
-            # print("Checkpoint Loading for Cross Validation: {}".format(k))
-            # # checkpoint_path = load_checkpoint(args, k)
-            # checkpoint = torch.load(checkpoint_path)
-            # model.load_state_dict(checkpoint['net'])
-            pass
+            print("Checkpoint Loading for Cross Validation: {}".format(k))
+            # checkpoint_path = load_checkpoint(args, k)
+            checkpoint = torch.load(checkpoint_path)
+            model.load_state_dict(checkpoint['net'])
         else:
             print("Training from Scratch!") 
 
@@ -141,6 +140,7 @@ for k in tqdm(range(k_fold)):
 
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
+            epoch = epoch + 75
 
             #Training
             epoch_loss, train_loss = train_regression(model, train_files, train_loader, optimizer, loss_function, device, train_loss)

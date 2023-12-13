@@ -67,7 +67,7 @@ except:
 path_output = "/home/ashish/Ashish/UCAN/Results/regression/experiment_" + experiment + "/"
 outcome = "patient_age" # "mtv"
 
-checkpoint_path = "/home/ashish/Ashish/UCAN/Results/regression/experiment_6/CV_0/Network_Weights/best_model_46.pth.tar"
+checkpoint_path = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_9/Network_Weights/best_model_67.pth.tar"
 
 pre_trained_weights = True
 
