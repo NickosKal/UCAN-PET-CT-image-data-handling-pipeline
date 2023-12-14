@@ -16,13 +16,13 @@ from tqdm import tqdm
 #import cc3d
 import SimpleITK as sitk
 import cv2
-#os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
+# os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.ndimage.measurements import label
 #import nibabel as nib
 import scipy.ndimage
-from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.metrics import confusion_matrix, mean_absolute_error, r2_score, cohen_kappa_score
 from torcheval.metrics.functional import multiclass_auroc, multiclass_accuracy, multiclass_recall, multiclass_precision
 from Task4.cross_validation.generate_dataset import prepare_data
 
@@ -78,38 +78,36 @@ def save_model(model, epoch, optimizer, k, path_Output):
 
 def validation_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_Output, outcome):
     #df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction', 'prediction_probability (sex)'])
-    df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction', 'prediction_probability (diagnosis)'])
+    df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction'])
 
-    scan_dates = np.unique(df_val["scan_date"])
-    tp = 0
-    fn = 0
-    fp = 0
-    tn = 0
+    df_val["unique_pat_ID_scan_date"] = df_val.apply(lambda x: str(x["patient_ID"]) + "_" + str(x["scan_date"]), axis=1)
+    unique_pat_ID_scan_date = np.unique(df_val["unique_pat_ID_scan_date"])
     pred_prob = []
+    pred = []
     GT = []
     #metric_values = []
 
-    for scan_date in tqdm(scan_dates):
-        #Patient-wise Validation
-        df_temp = df_val[df_val["scan_date"]==scan_date].reset_index(drop=True)
-        pat_id = np.unique(df_temp["patient_ID"])
+    for pat_ID_scan_date in tqdm(unique_pat_ID_scan_date):
+        # Patient-wise Validation
+        df_temp = df_val[df_val["unique_pat_ID_scan_date"] == pat_ID_scan_date].reset_index(drop=True)
+        pat_id, scan_date = pat_ID_scan_date.split('_')
         val_files, val_loader = prepare_data(args, df_temp, args["batch_size_val"], shuffle=False, label=outcome)
 
+        softmax_out = [0, 0, 0]
         softmax_prob_list = []
         for inputs, labels in val_loader:
             model.eval()
 
             labels = torch.LongTensor(labels)
-            #labels = labels.type(torch.LongTensor)
             inputs, labels = inputs.to(device), labels.numpy()
             #inputs = torch.unsqueeze(inputs, dim=0)
             outputs= torch.nn.Softmax(dim=1)(model(inputs))
             
             softmax_out = outputs.data.cpu().numpy()
             softmax_out = softmax_out[0].tolist()
-
             softmax_prob_list.append(softmax_out)
             #print("outputs: ", outputs)
+
         """            
         if outputs[0][0] > outputs[0][1]:
                 prediction = 0
@@ -132,7 +130,7 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
 
         # For sex classification
         if outcome == "sex":
-            df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [softmax_out.index(max(softmax_out)) + 1],
+            df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [softmax_out.index(max(softmax_out))],
                                         'prediction_probability male': [softmax_out[0]], 'prediction_probability male': [softmax_out[1]]})
 
         # For diagnosis classification
@@ -140,7 +138,7 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
             df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 
                                         'scan_date': [scan_date], 
                                         'GT': [scan_GT], 
-                                        'prediction': [softmax_out.index(max(softmax_out)) + 1], 
+                                        'prediction': [softmax_out.index(max(softmax_out))], 
                                         'prediction_probability C81(diagnosis)': [softmax_out[0]], 
                                         'prediction_probability C83 (diagnosis)': [softmax_out[1]], 
                                         'prediction_probability Others (diagnosis)': [softmax_out[2]]})
@@ -149,26 +147,44 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         df_performance = pd.concat([df_performance, df_temp_new], ignore_index=True)
 
 
-        pred_prob.append(softmax_prob_list)
+        pred_prob.append(softmax_prob_list[0])
+        pred.append(softmax_out.index(max(softmax_out)))
         GT.append(scan_GT)
 
+    print("pred len: ", len(pred))
+    print("GT len: ", len(GT))
+          
     #metric = calculate_metrics(pred_prob, np.array(GT).astype(int))
     metric = calculate_multiclass_metrics(pred_prob, np.array(GT).astype(int))
 
-    print("AUC: ", metric)
+
+    if outcome=="GT_diagnosis_label" :
+        idx_classes = ["C81_GT", "C83_GT", "Others_GT"]
+        col_classes = ["C81_Pred", "C83_Pred", "Others_Pred"]
+        confusion_matrix_df = pd.DataFrame(confusion_matrix(GT, pred), columns=col_classes, index=idx_classes)
+        #ax = sns.heatmap(confusion_matrix_df, annot=True)
+        print(confusion_matrix_df)
+        #plt.title("Classification Confusion Matrix")
+        #plt.show()
+        
+    #Previously Auc, moving on to C_K_Score
+    print("Cohen Kappa score: ", metric)
     metric_values.append(metric)
     #Save the model if metric is increasing
     if metric > best_metric:
         best_metric = metric
         save_model(model, epoch, optimizer, k, path_Output)
 
-    df_performance.to_csv(os.path.join(path_Output, "CV_" + str(k), "Metrics", "epoch_" + str(epoch) + ".csv"))
+    df_performance.to_csv(os.path.join(path_Output, "CV_" + str(k), "Metrics", "epoch_" + str(epoch) + ".csv"), index=False)
     return metric_values, best_metric
 
 def calculate_multiclass_metrics(pred_prob, GT):
     #print("prediction: ", pred_labels)
     #print("GT: ", GT)
     # Calculate True Positives (TP), True Negatives (TN), False Positives (FP), and False Negatives (FN)
+
+    c_k_score = cohen_kappa_score(np.argmax(np.array(pred_prob),axis=1), GT)
+    
     pred_prob = torch.tensor(pred_prob)
     GT = torch.tensor(GT)
     sensitivity = multiclass_recall(pred_prob, GT, average=None, num_classes=3) 
@@ -180,12 +196,13 @@ def calculate_multiclass_metrics(pred_prob, GT):
         ["Sensitivity", sensitivity],
         ["Precision", precision],
         ["Specificity", specificity],
-        ["AUC", auc]
+        ["AUC", auc],
+        ["Cohen Kappa Score", c_k_score]
     ]
     # Print results in tabular form
     print(tabulate(results, headers=["Metric", "Value"], tablefmt="fancy_grid"))
 
-    return auc
+    return c_k_score
 
 def calculate_metrics(pred_prob, GT):
     fpr, tpr, thresholds = metrics.roc_curve(GT, pred_prob)
@@ -352,14 +369,21 @@ def validation_regression(args, k, epoch, optimizer, model, df_val, device, best
     return metric_values, best_metric#, metric_values_r_squared
 
 
+def plot_c_k_score(dice, path):
+    epoch = [1 * (i + 1) for i in range(len(dice))]
+    plt.plot(epoch, dice)
+    plt.savefig(path, dpi=400)
+    plt.xlabel("Number of Epochs")
+    plt.ylabel("Cohen Kappa Score")
+
 def plot_auc(dice, path):
     epoch = [1 * (i + 1) for i in range(len(dice))]
     plt.plot(epoch, dice)
     plt.savefig(path, dpi=400)
     plt.xlabel("Number of Epochs")
     plt.ylabel("AUC")
-
-def plot(dice, path, name=None):
+    
+def plot(dice, path, name="N"):
     epoch = [1 * (i + 1) for i in range(len(dice))]
     plt.plot(epoch, dice)
     plt.xlabel("Number of Epochs")
