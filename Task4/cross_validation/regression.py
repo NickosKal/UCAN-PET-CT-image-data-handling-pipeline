@@ -59,8 +59,8 @@ else:
 
 experiment = 8
 k_fold = 10
-learning_rate = 1e-4
-weight_decay = 1e-5
+learning_rate = 5e-5
+weight_decay = 5e-5
 batch_size_train = 14
 args = {"num_workers": 2,
         "batch_size_val": 1} #25
@@ -72,7 +72,7 @@ df = df.replace("/media/andres/T7 Shield1/UCAN_project/collages/reshaped_collage
 path_output = PATH +config['regression_path']
 
 outcome = "patient_age" # "mtv"
-pre_trained_weights = True
+pre_trained_weights = False
 
 df = df.sort_values(by="scan_date")
 df['scan_date'] = df['scan_date'].astype(str)
@@ -87,7 +87,7 @@ for k in tqdm(range(k_fold)):
 
         checkpoint_path = utils.load_checkpoints(system, "regression", None, experiment, k)
         print(f"Cross validation for fold {k}")
-        max_epochs = 1000
+        max_epochs = 100
         val_interval = 1 
         best_metric = 100000000000
         best_metric_epoch = -1
@@ -136,7 +136,6 @@ for k in tqdm(range(k_fold)):
 
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
-            epoch = epoch + 75
 
             #Training
             epoch_loss, train_loss = train_regression(model, train_files, train_loader, optimizer, loss_function, device, train_loss)

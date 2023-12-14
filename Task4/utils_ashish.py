@@ -16,13 +16,13 @@ from tqdm import tqdm
 #import cc3d
 import SimpleITK as sitk
 import cv2
-# os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
+os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.ndimage.measurements import label
 #import nibabel as nib
 import scipy.ndimage
-from sklearn.metrics import mean_absolute_error, r2_score, cohen_kappa_score
+from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.metrics import confusion_matrix, classification_report
 import seaborn as sns
 from torcheval.metrics.functional import multiclass_auroc, multiclass_accuracy, multiclass_recall, multiclass_precision
@@ -84,6 +84,10 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
 
     df_val["unique_pat_ID_scan_date"] = df_val.apply(lambda x: str(x["patient_ID"]) + "_" + str(x["scan_date"]), axis=1)
     unique_pat_ID_scan_date = np.unique(df_val["unique_pat_ID_scan_date"])
+    tp = 0
+    fn = 0
+    fp = 0
+    tn = 0
     pred_prob = []
     pred = []
     GT = []
@@ -102,6 +106,7 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
             model.eval()
 
             labels = torch.LongTensor(labels)
+            #labels = labels.type(torch.LongTensor)
             inputs, labels = inputs.to(device), labels.numpy()
             #inputs = torch.unsqueeze(inputs, dim=0)
             outputs= torch.nn.Softmax(dim=1)(model(inputs))
@@ -156,6 +161,9 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         GT.append(scan_GT)
 
     #metric = calculate_metrics(pred_prob, np.array(GT).astype(int))
+    print("pred_prob: ", pred_prob)
+    print("pred: ", pred)
+    print("GT: ", GT)
     print("pred len: ", len(pred))
     print("GT len: ", len(GT))
     metric = calculate_multiclass_metrics(pred_prob, np.array(GT).astype(int))
@@ -169,25 +177,20 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         #plt.title("Classification Confusion Matrix")
         #plt.show()
 
-
-    #Previously Auc, moving on to C_K_Score
-    print("Cohen Kappa score: ", metric)
+    print("AUC: ", metric)
     metric_values.append(metric)
     #Save the model if metric is increasing
     if metric > best_metric:
         best_metric = metric
         save_model(model, epoch, optimizer, k, path_Output)
 
-    df_performance.to_csv(os.path.join(path_Output, "CV_" + str(k), "Metrics", "epoch_" + str(epoch) + ".csv"), index=False)
+    df_performance.to_csv(os.path.join(path_Output, "CV_" + str(k), "Metrics", "epoch_" + str(epoch) + ".csv"))
     return metric_values, best_metric
 
 def calculate_multiclass_metrics(pred_prob, GT):
     #print("prediction: ", pred_labels)
     #print("GT: ", GT)
     # Calculate True Positives (TP), True Negatives (TN), False Positives (FP), and False Negatives (FN)
-
-    c_k_score = cohen_kappa_score(np.argmax(np.array(pred_prob),axis=1), GT)
-
     pred_prob = torch.tensor(pred_prob)
     GT = torch.tensor(GT)
     sensitivity = multiclass_recall(pred_prob, GT, average=None, num_classes=3) 
@@ -199,15 +202,12 @@ def calculate_multiclass_metrics(pred_prob, GT):
         ["Sensitivity", sensitivity],
         ["Precision", precision],
         ["Specificity", specificity],
-        ["AUC", auc],
-        ["Cohen Kappa Score", c_k_score]
+        ["AUC", auc]
     ]
     # Print results in tabular form
     print(tabulate(results, headers=["Metric", "Value"], tablefmt="fancy_grid"))
 
-
-    #Returning the c_k_score instead of Auc here
-    return c_k_score
+    return auc
 
 def calculate_metrics(pred_prob, GT):
     fpr, tpr, thresholds = metrics.roc_curve(GT, pred_prob)
@@ -381,15 +381,7 @@ def plot_auc(dice, path):
     plt.xlabel("Number of Epochs")
     plt.ylabel("AUC")
 
-
-def plot_c_k_score(dice, path):
-    epoch = [1 * (i + 1) for i in range(len(dice))]
-    plt.plot(epoch, dice)
-    plt.savefig(path, dpi=400)
-    plt.xlabel("Number of Epochs")
-    plt.ylabel("AUC")
-
-def plot(dice, path, name='N'):
+def plot(dice, path, name=None):
     epoch = [1 * (i + 1) for i in range(len(dice))]
     plt.plot(epoch, dice)
     plt.xlabel("Number of Epochs")

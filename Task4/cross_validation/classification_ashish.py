@@ -31,43 +31,20 @@ parent_dir = os.path.abspath('../')
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from Task4.utils_ashish import train_classification, validation_classification, plot_auc, plot_c_k_score
+from Task4.utils_ashish import train_classification, validation_classification, plot_auc
 
-
-def stratified_split(df_clean, k):
-    df_list=[ df_clean[df_clean['GT_diagnosis_label']==x].reset_index(drop=True) for x in range(3) ]
-    factor_list= [ round(x.shape[0]/k_fold) for x in df_list ]
-
-    if k == (k_fold - 1):
-        patients_for_val = []
-        for x,f in zip(df_list,factor_list):
-            patients_for_val.extend(x[f*k:].patient_ID.tolist())
-        df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
-
-    else:
-        patients_for_val = []
-        for x,f in zip(df_list,factor_list):
-            patients_for_val.extend(x[f*k:f*k+f].patient_ID.tolist())
-        df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
-
-    df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
-
-    return df_train, df_val
-
-classification = 'diagnosis' #or 'sex'
-experiment = "1"
+experiment = "5"
 k_fold = 10
 learning_rate = 1e-4
 weight_decay = 1e-5
-batch_size_train = 10
-args = {"num_workers": 2,
+batch_size_train = 2
+args = {"num_workers": 4,
         "batch_size_val": 1}
 
 #df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_classification.xlsx")
 #df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/dataset_for_training_classification_v2.xlsx")
-df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_366patients_clinical20231129.xlsx")
-for path in ['SUV_MIP', 'CT_MIP', 'SUV_bone', 'CT_bone', 'SUV_lean', 'CT_lean', 'SUV_adipose', 'CT_adipose', 'SUV_air', 'CT_air']:
-    df[path] = df[path].str.replace('/home/ashish/Ashish/UCAN/ReshapedCollages/collages', '/media/andres/T7 Shield1/UCAN_project/collages/reshaped_collages', regex=True)
+df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/Files/dataset_for_training_366patients_clinical20231129.xlsx")
+
 
 print(df.shape)
 df_sorted = df.sort_values(by="patient_ID")
@@ -80,15 +57,16 @@ try:
 except:
     df_clean = df_sorted.copy()
 
-classification_save_path = "/media/andres/T7 Shield1/UCAN_project/Results/classification"
-if classification == 'diagnosis':
-    path_output = os.path.join(classification_save_path, "Diagnosis" + "/" + "Experiment_" + str(experiment) + "/")
-    outcome = "GT_diagnosis_label"
+#path_output = "/media/andres/T7 Shield1/UCAN_project/Results/classification"
+path_output = "/home/ashish/Ashish/UCAN/Results/classification/experiment_" + experiment + "/"
+outcome = "GT_diagnosis_label" #"sex" # diagnosis
+
+if outcome == "sex":
+    output_channels = 2
+elif outcome == "GT_diagnosis_label":
     output_channels = 3
 else:
-    path_output = os.path.join(classification_save_path, "Sex" + "/" + "Experiment_" + str(experiment) + "/")
-    outcome = "sex"
-    output_channels = 2
+    output_channels = 1
 
 #checkpoint_path = "/home/ashish/Ashish/UCAN/pretrained_model_autoPet/classification_sex/best_model_10.pth.tar"
 pre_trained_weights = False
@@ -96,7 +74,7 @@ pre_trained_weights = False
 for k in tqdm(range(k_fold)):
     if k >= 0:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 500
+        max_epochs = 100
         val_interval = 1
         best_metric = 0
         best_metric_epoch = -1
@@ -138,21 +116,16 @@ for k in tqdm(range(k_fold)):
         df_train = df[~df.scan_date.isin(df_val.scan_date)].reset_index(drop=True)
         """
 
-        # factor = round(df.shape[0]/k_fold)
-        # if k == (k_fold - 1):
-        #     patients_for_val = df_clean[factor*k:].patient_ID.tolist()
-        #     df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
-        # else:
-        #     patients_for_val = df_clean[factor*k:factor*k+factor].patient_ID.tolist()
-        #     df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+        factor = round(df.shape[0]/k_fold)
+        if k == (k_fold - 1):
+            patients_for_val = df_clean[factor*k:].patient_ID.tolist()
+            df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+        else:
+            patients_for_val = df_clean[factor*k:factor*k+factor].patient_ID.tolist()
+            df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
 
-        # df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)Changed the metric to cohen].reset_index(drop=True)
+        df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
 
-        df_train, df_val = stratified_split(df_clean, k)
-        # remove_ids = ['lpr385705046400', 'npr106484754818', 'npr107605794128']
-        # df_train = df_train[df_train.patient_ID.isin(remove_ids)].reset_index(drop=True)
-        # df_val = df_val[df_val.patient_ID.isin(remove_ids)].reset_index(drop=True)
-        # df_train = df_val
 
         print("Number of exams in Training set: ", len(df_train))
         print("Number of patients in Training set: ", df_train.patient_ID.nunique())
@@ -173,8 +146,8 @@ for k in tqdm(range(k_fold)):
 
             class_freq = np.unique(df_train["GT_diagnosis_label"], return_counts=True)[1]
             class_weights = torch.tensor([float(class_freq[0]/np.sum(class_freq)), float(class_freq[1]/np.sum(class_freq)), float(class_freq[2]/np.sum(class_freq))]).to(device)
+            print("class_weights_diagnosis: ", class_weights)
             loss_function = torch.nn.CrossEntropyLoss(weight=class_weights)
-
         else:
             loss_function = torch.nn.CrossEntropyLoss()
 
@@ -183,13 +156,13 @@ for k in tqdm(range(k_fold)):
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
             epoch_loss, train_loss = train_classification(model, train_loader, optimizer, loss_function, device, train_loss, outcome)
-            print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}") #Changed the metric to c_k_score
+            print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}")
 
             if (epoch + 1) % val_interval == 0:
                 metric_values, best_metric_new = validation_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_output, outcome)
                 best_metric = best_metric_new
 
-            np.save(os.path.join(path_output, "CV_" + str(k) + "/c_k_score.npy"), metric_values)
-            path_dice = os.path.join(path_output, "CV_" + str(k), "epoch_vs_c_k_score.jpg")
+            np.save(os.path.join(path_output, "CV_" + str(k) + "/AUC.npy"), metric_values)
+            path_dice = os.path.join(path_output, "CV_" + str(k), "epoch_vs_auc.jpg")
             if len(metric_values) > 2:
-                plot_c_k_score(metric_values, path_dice)
+                plot_auc(metric_values, path_dice)
