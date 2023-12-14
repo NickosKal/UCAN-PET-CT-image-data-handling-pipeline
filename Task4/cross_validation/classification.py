@@ -1,5 +1,6 @@
 import os
 import shutil
+import string
 import tempfile
 import matplotlib.pyplot as plt
 import PIL
@@ -23,7 +24,6 @@ from monai.transforms.spatial.array import RandFlip,RandRotate,RandZoom
 from monai.transforms.intensity.array import ScaleIntensity
 
 from monai.utils.misc import set_determinism
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from generate_dataset import prepare_data
 import sys
 
@@ -32,6 +32,20 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from Task4.utils import train_classification, validation_classification, plot_auc, plot_c_k_score
+
+from Utils import utils
+
+# reading main config file
+config = utils.read_config()
+system = 0 # 1 or 2
+if system == 1:
+    PATH = config["Source"]["paths"]["source_path_system_1"]
+elif system == 2:
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    PATH = config["Source"]["paths"]["source_path_system_2"]
+else:
+    PATH = ""
+    print("Invalid system")
 
 def stratified_split(df_clean, k):
     df_list=[ df_clean[df_clean['GT_diagnosis_label']==x].reset_index(drop=True) for x in range(3) ]
@@ -62,11 +76,11 @@ batch_size_train = 10
 args = {"num_workers": 2,
         "batch_size_val": 1}
 
-df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_model_classification_training.xlsx")
+df_path = PATH + config["collages_for_classification_dataframe"]
+df = pd.read_excel(df_path)
 df_sorted = df.sort_values(by="patient_ID")
-df_sorted["GT_diagnosis_label"] = np.where(df_sorted["diagnosis_groups"]=="C81", 0, np.where(df_sorted["diagnosis_groups"]=="C83", 1, 2))
 
-path_output = "/media/andres/T7 Shield1/UCAN_project/Results/classification"
+path_output = PATH +config['classification_path']
 
 path_output_for_sex = os.path.join(path_output, "Sex" + "/" + "Experiment_" + str(experiment) + "/")
 if not os.path.exists(path_output_for_sex):
@@ -77,17 +91,21 @@ if not os.path.exists(path_output_for_diagnosis):
     os.makedirs(path_output_for_diagnosis)
 
 if outcome == "sex":
+    folder_name = "Sex"
     output_channels = 2
 elif outcome == "GT_diagnosis_label":
+    folder_name = "Diagnosis"
     output_channels = 3
 else:
+    folder_name = ""
     output_channels = 1
 
-checkpoint_path = "/media/andres/T7 Shield1/UCAN_project/Results/classification/Diagnosis/Experiment_1/CV_1/Network_Weights/best_model_142.pth.tar"
 pre_trained_weights = True
 
 for k in tqdm(range(k_fold)):
     if k >= 1:
+
+        checkpoint_path = utils.load_checkpoints(system, "classification", folder_name, experiment, k)
         print("Cross Validation for fold: {}".format(k))
         max_epochs = 500
         val_interval = 1
@@ -96,7 +114,6 @@ for k in tqdm(range(k_fold)):
         metric_values = []
         print("Network Initialization")
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # device = "cpu"
         print(device)
         model = Densenet121(spatial_dims=2, in_channels=10, out_channels=output_channels, init_features=64, dropout_prob=0.25).to(device)
         
@@ -121,14 +138,6 @@ for k in tqdm(range(k_fold)):
         if not os.path.exists(path_output_for_diagnosis+"CV_"+str(k)+'/MIPs/'):
             os.makedirs(path_output_for_diagnosis+"CV_"+str(k)+'/MIPs/')
 
-        # factor = round(df.shape[0]/k_fold)
-        # if k == (k_fold - 1):
-        #     patients_for_val = df[factor*k:].patient_ID.tolist()
-        #     df_val = df[df.patient_ID.isin(patients_for_val)].reset_index(drop=True)
-        # else:
-        #     patients_for_val = df[factor*k:factor*k+factor].patient_ID.tolist()
-        #     df_val = df[df.patient_ID.isin(patients_for_val)].reset_index(drop=True)
-        
         df_train, df_val = stratified_split(df_sorted, k)
 
         print("Number of exams in Training set: ", len(df_train))
@@ -166,8 +175,8 @@ for k in tqdm(range(k_fold)):
                 metric_values, best_metric_new = validation_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_output_for_diagnosis, outcome)
                 best_metric = best_metric_new
             
-            np.save(os.path.join(path_output_for_diagnosis, "CV_" + str(k) + "/AUC.npy"), metric_values)
-            path_dice = os.path.join(path_output_for_diagnosis, "CV_" + str(k), "epoch_vs_auc.jpg")
+            np.save(os.path.join(path_output_for_diagnosis, "CV_" + str(k) + "/c_k_score.npy"), metric_values)
+            path_dice = os.path.join(path_output_for_diagnosis, "CV_" + str(k), "epoch_vs_c_k_score.jpg")
             if len(metric_values) > 2:
                 plot_c_k_score(metric_values, path_dice)
     

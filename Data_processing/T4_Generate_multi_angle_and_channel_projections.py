@@ -21,9 +21,17 @@ sys.path.append(os.path.join(home_directory, 'VSCode', 'UCAN-PET-CT-image-data-h
 from Utils import utils
 
 config = utils.read_config()
+system = 0 # 1 or 2
+if system == 1:
+    source_path = config["Source"]["paths"]["source_path_system_1"]
+elif system == 2:
+    source_path = config["Source"]["paths"]["source_path_system_2"]
+else:
+    source_path = ""
+    print("Invalid system")
 
-raw_projections_path = config["projections"]["paths"]["raw_projections_path"]
-resampled_SUV_CT_path = config['resampling']['path_to_save']
+raw_projections_path = source_path + config["projections"]["paths"]["raw_projections_path"]
+resampled_SUV_CT_path = source_path + config['resampling']['path_to_save']
 
 # Create a dataframe with the paths from the niftii files to be used later to generate the 2D projections
 resampled_directory_list = []
@@ -119,4 +127,4 @@ df_of_raw_projections["CT_air"] = df_of_raw_projections["CT_air"].str.replace("S
 
 #Save dataframe to disk
 df_of_raw_projections = df_of_raw_projections[["patient_ID", "scan_date", "SUV_MIP", "CT_MIP", "SUV_bone", "CT_bone", "SUV_lean", "CT_lean", "SUV_adipose", "CT_adipose", "SUV_air", "CT_air", "angle"]]
-df_of_raw_projections.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_raw_projections.xlsx", index=False)
+df_of_raw_projections.to_excel(source_path + config["raw_projections_dataframe"], index=False)

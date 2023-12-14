@@ -1,9 +1,20 @@
 import numpy as np
 import pandas as pd
 
+from Utils import utils
 
+config = utils.read_config()
+system = 0 # 1 or 2
+if system == 1:
+    source_path = config["Source"]["paths"]["source_path_system_1"]
+elif system == 2:
+    source_path = config["Source"]["paths"]["source_path_system_2"]
+else:
+    source_path = ""
+    print("Invalid system")
+    
 # The following part of the code it is used to find arrays that might have NaN values
-df_of_collages = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/df_of_reshaped_collages.xlsx")
+df_of_collages = pd.read_excel(source_path + config["reshaped_collages_dataframe"])
 temp = df_of_collages.copy()
 temp['incorrect_projection'] = 'False'
 
@@ -70,7 +81,7 @@ for index, row in temp.iterrows():
 
 df_with_nan_arrays = temp[temp['incorrect_projection'] == 'True']
 df_with_nan_arrays = df_with_nan_arrays.drop_duplicates()
-df_with_nan_arrays.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_arrays_with_nan_arrays.xlsx", index=False)
+df_with_nan_arrays.to_excel(source_path + config["collages_with_nan_arrays_daraframe"], index=False)
 df_of_collages_without_nan_arrays = temp[~temp.incorrect_projection.isin(df_with_nan_arrays.incorrect_projection)]
 df_of_collages_without_nan_arrays.drop(columns=['incorrect_projection'])
-df_of_collages_without_nan_arrays.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_collages_without_nan_arrays.xlsx", index=False)
+df_of_collages_without_nan_arrays.to_excel(source_path + config["collages_without_nan_arrays_daraframe"], index=False)

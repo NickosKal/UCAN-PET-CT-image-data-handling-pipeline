@@ -1,45 +1,63 @@
 ---
-# Common config variables
-common:
+# Source paths
+Source:
     paths:
-        source_path_wd : 'E:/U-CAN-Lymfom_A' #'/media/andres/T7 Shield1/U-CAN-Lymfom_A'
-        source_path_bd : '/media/andres/T7 Shield/ucan_lymfom' #'F:/ucan_lymfom'
+        source_path_system_1: '/media/andres/T7 Shield1/UCAN_project'
+        source_path_system_2: '/home/ashish/Ashish/UCAN'
 
 # Selection script config variables
 selection:
     filenames:
-        rejected_folder_filename : 'Rejected_exams_from_U-CAN-Lymfom.xlsx'
-        sourcefiltered_folder_filename : 'SourceFiltered_exams_from_U-CAN-Lymfom.xlsx'
-        incomplete_folders_filename_initial : 'Excel_files/No_PT_or_CT_exams_from_U-CAN-Lymfom_before_selection_process.xlsx'
-        incomplete_folders_filename_final : 'Excel_files/No_PT_or_CT_exams_from_U-CAN-Lymfom_after_selection_process.xlsx'
-        selected_folders_beforefiltering_filename : 'Excel_files/Selected_exams_after_filtering_from_U-CAN-Lymfom.xlsx'
-        selected_folders_afterfiltering_filename : 'Excel_files/Selected_exams_before_filtering_from_U-CAN-Lymfom.xlsx'
-        final_selected_images_filename : 'Excel_files/Final_Selected_exams_from_U-CAN-Lymfom.xlsx'
-        list_of_distorted_images_filename : 'Excel_files/exams_with_distorted_images_file.xlsx'
-        misclassified_files: 'Excel_files/MisclassifiedSelected_files.xlsx'
+        path_to_exams_folder_system_1: '/media/andres/T7 Shield1/ucan_lymfom'
+        path_to_exams_folder_system_2: "/home/ashish/Ashish/T7 Shield1/ucan_lymfom"
 
 # Metadata extraction config variables
 metadata:
     filenames:
-        final_selected_images_filename : 'Excel_files/Finalized_dataset.xlsx'
-
+        final_selected_exams_dataframe: '/Dataframes/Metadata/Finalized_dataset.xlsx'
+        regression_dataframe: "/Dataframes/Metadata/Finalized_dataset_exams_with_age.xlsx"
+        classification_dataframe: "/Dataframes/Metadata/dataset_for_training_366patients_baseline_scans_clinical20231129.xlsx"
+        clinical_data: "/Dataframes/Metadata/Lymphoma_Octopus_Export 2023-11-29_C80_only_n1291_incl_YYYY_MM_pnr_removed.xlsx"
 
 # Resampling Task config variables
 resampling:
-    path_to_save: "/media/andres/T7 Shield1/UCAN_project/Resampled_SUV_CT/"
-    voxel_spacing : [2.0364201068878174, 2.0364201068878174, 3.0]
-    image_size : [256,256,256]
+    path_to_save: "/Resampled_SUV_CT/"
+    voxel_spacing: [2.0364201068878174, 2.0364201068878174, 3.0]
+    image_size: [256,256,256]
 
 # Projection config variables
 projections:
     paths:
-        raw_projections_path : '/media/andres/T7 Shield1/UCAN_project/2D_projections/raw_projections/'
+        raw_projections_path: '/2D_projections/raw_projections/'
+        raw_projections_alternative_path: "/2D_projections/raw_projections_lean_bone_alternatives/"
     variables:
-        modality : ['CT', 'PT', 'SUV']
-        tissue_type : ['LT', 'AT', 'LT' , 'B' , 'N']
-        projection_type : ['sum', 'min', 'max', 'mean', 'std']
-        angles : [0, 90]
+        modality: ['CT', 'PT', 'SUV']
+        tissue_type: ['LT', 'AT', 'LT' , 'B' , 'N']
+        projection_type: ['sum', 'min', 'max', 'mean', 'std']
+        angles: [0, 90]
 
-# Excel files in the metadata disk 
+# Collages paths
+collages:
+    paths:
+        raw: "/collages/raw_collages/"
+        reshaped: "/collages/reshaped_collages/"
 
+# Excel files in the metadata disk
+path_to_save_dataframes: "/Dataframes/Generated/"
+distorted_exams_dataframe: "/Dataframes/Generated/exams_with_distorted_images_file.xlsx"
+exams_ready_for_selection_dataframe: "/Dataframes/Generated/data_ready_for_filtering.xlsx"
+final_selected_folders_dataframe: "/Dataframes/Generated/Final_Selected_exams_from_U-CAN-Lymfom.xlsx"
+resampled_SUV_CT_dataframe: "/Dataframes/Generated/resampled_SUV_CT_dataframe.xlsx"
+raw_projections_dataframe: "/Dataframes/Generated/df_of_raw_projections.xlsx"
+raw_collages_dataframe: "/Dataframes/Generated/df_of_raw_collages.xlsx"
+reshaped_collages_dataframe: "/Dataframes/Generated/df_of_reshaped_collages.xlsx"
+collages_with_nan_arrays_daraframe: "/Dataframes/Generated/df_of_collages_with_nan_arrays.xlsx"
+collages_without_nan_arrays_daraframe: "/Dataframes/Generated/df_of_collages_without_nan_arrays.xlsx"
+collages_for_rergession_dataframe: "/Dataframes/Generated/dataset_for_model_regression_training.xlsx"
+collages_for_classification_dataframe: "/Dataframes/Generated/dataset_for_model_classification_training.xlsx"
+
+# Results Folder
+classification_path: "/Results/classification"
+regression_path: "/Results/regression"
+grad_cam_path: "/Results/GradCAM_analysis"
 ...

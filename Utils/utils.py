@@ -6,6 +6,7 @@ import SimpleITK as sitk
 import numpy as np
 import pandas as pd
 from datetime import datetime
+from pathlib import Path
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -15,6 +16,8 @@ def read_config():
         config=yaml.load(file_object,Loader=yaml.SafeLoader)
         #print(config)
     return config
+
+config = read_config()
 
 def display_full(x):
     with pd.option_context("display.max_rows", None,
@@ -298,7 +301,41 @@ def find_distorted_examinations(path_of_exams, path_to_save):
     countfiles_selected_df = pd.DataFrame.from_dict(countfiles_selected)
     exams_with_distorted_images_file = countfiles_selected_df[countfiles_selected_df["count"] < 179].reset_index()
     exams_with_distorted_images_file[['source_directory', 'patient_directory', 'PET-CT_info']] = exams_with_distorted_images_file['directory'].str.rsplit(pat='/', n=2, expand=True)
-    exams_with_distorted_images_file.to_excel(os.path.join(path_to_save, "exams_with_distorted_images_file.xlsx"))
+    exams_with_distorted_images_file.to_excel(path_to_save + "exams_with_distorted_images_file.xlsx")
     dataset = dataset[~dataset.directory.isin(exams_with_distorted_images_file.directory)]
-    dataset.to_excel(os.path.join(path_to_save, "data_ready_for_filtering.xlsx"))
+    dataset.to_excel(path_to_save + "data_ready_for_filtering.xlsx")
+
+def best_model_selection_from_fold(system, type, category, experiment_number, fold_number):
+    if type == "regression":
+        path = config["Source"]["paths"][f"source_path_system_{system}"] + config["regression_path"] + f"/Experiment_{experiment_number}/CV_{fold_number}/Network_Weights/"
+    else:
+        path = config["Source"]["paths"][f"source_path_system_{system}"] + config["classification_path"] + f"/{category}/Experiment_{experiment_number}/CV_{fold_number}/Network_Weights/"
+    path_object = Path(path)
+    models = path_object.glob("*")
+    models_sorted = sorted(models, key=lambda model: model.name)
+    return path + [model.name for model in models_sorted][-1]
     
+def load_checkpoints(system, type, category, experiment_number, fold_number):
+
+    if fold_number == 0:
+        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+    elif fold_number == 1:
+        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+    elif fold_number == 2:
+        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+    elif fold_number == 3:
+        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+    elif fold_number == 4:
+        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+    elif fold_number == 5:
+        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+    elif fold_number == 6:
+        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+    elif fold_number == 7:
+        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+    elif fold_number == 8:
+        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+    elif fold_number == 9:
+        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+    
+    return checkpoint_path

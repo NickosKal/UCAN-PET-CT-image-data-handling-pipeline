@@ -24,50 +24,50 @@ from Utils import utils
 # reading main config file
 config = utils.read_config()
 
+from Utils import utils
+
+# reading main config file
+config = utils.read_config()
+system = 0 # 1 or 2
+if system == 1:
+    source_path = config["Source"]["paths"]["source_path_system_1"]
+    exams_folder = config["selection"]["filenames"]["path_to_exams_folder_system_1"]
+elif system == 2:
+    source_path = config["Source"]["paths"]["source_path_system_2"]
+    exams_folder = config["selection"]["filenames"]["path_to_exams_folder_system_2"]
+else:
+    exams_folder = ""
+    source_path = ""
+    print("Invalid system")
+
 # reading image size and voxel spacing information
 config_size = config['resampling']['image_size']
 config_spacing = config['resampling']['voxel_spacing']
 print('Config size: ', config_size)
 print('Config spacing: ', config_spacing)
 
-# source path for all data files
-source_path_wd = config['common']['paths']['source_path_wd']
-source_path_bd = config['common']['paths']['source_path_bd']
-
 # reading filename from the config
-master_data_wd_filename = config['metadata']['filenames']['final_selected_images_filename']
-master_data_bd_filename = config['metadata']['filenames']['final_selected_images_filename']
-
-final_selected_images_filename = config['selection']['filenames']['final_selected_images_filename']
-final_selected_folders_bd = source_path_bd + '/' + final_selected_images_filename
+selected_exams_dataframe = config['final_selected_folders_dataframe']
 
 # reading resampling path from the config
-resampled_save_destination_path = config["resampling"]["path_to_save"]
+resampled_save_destination_path = source_path + config["resampling"]["path_to_save"]
 
-# master_data for black disk
-print("Reading master data for black disk")
-master_data_bd = pd.read_excel(source_path_bd + "/" + master_data_wd_filename)
-print("Master data shape: ", master_data_bd.shape)
-utils.display_full(master_data_bd.head(2))
+# master_data
+print("Reading master data")
+master_data = pd.read_excel(source_path + selected_exams_dataframe)
+print("Master data shape: ", master_data.shape)
+utils.display_full(master_data.head(2))
 
 # sorting the dataframe to process PT before CT
-master_data_bd_sorted = master_data_bd.sort_values(by=["patient_directory"	,"PET-CT_info"], ascending=[True, False])
-utils.display_full(master_data_bd_sorted.head(2))
+master_data_sorted = master_data.sort_values(by=["patient_directory"	,"PET-CT_info"], ascending=[True, False])
+utils.display_full(master_data_sorted.head(2))
 
 # create dict to store original image names
 resampled_SUV_CT = {'patient_directory' : [], 'SUV': [], 'CT' : [], 'new_size' : []}
 
 # iterating over dataframe to resampled SUV/CT and save as nifti files
-for index, row in master_data_bd_sorted.iterrows():
-    #print(index, row['patient_directory'], row['PET-CT_info'])
-    #if index == 5:
-    #   break
+for index, row in master_data_sorted.iterrows():
 
-    #if row["npr"]=="npr126347730283" and row["scan_date"]==20170807:
-    #    pass
-    #else:
-    #    continue
-    
     #create patient directories
     npr_directories = resampled_save_destination_path + str(row['npr']) + '_SUV_CT/'
     if not os.path.exists(npr_directories):
@@ -85,9 +85,6 @@ for index, row in master_data_bd_sorted.iterrows():
     
         # read PT dicom image
         PET_img = utils.read_dicom(row['directory'])
-
-        #save_path = resampled_save_destination_path + str(row['npr']) + '_SUV_CT/' + str(row['scan_date']) + '/' + 'PT_Original'
-        #utils.save_as_gz(PET_img, save_path+'.nii.gz')
 
         # get PT image size
         image_size = PET_img.GetSize()
@@ -132,15 +129,12 @@ for index, row in master_data_bd_sorted.iterrows():
         resampled_SUV_CT['SUV'].append(row['PET-CT_info'])
         
         # save resampled SUV image in nifti format
-        save_path= resampled_save_destination_path + str(row['npr']) + '_SUV_CT/' + str(row['scan_date']) + '/' + 'SUV'
-        utils.save_as_gz(SUV_img, save_path+'.nii.gz')
+        save_path = resampled_save_destination_path + str(row['npr']) + '_SUV_CT/' + str(row['scan_date']) + '/' + 'SUV'
+        utils.save_as_gz(SUV_img, save_path + '.nii.gz')
     
     if row['modality']=='CT': 
         # read PT dicom image
         CT_img = utils.read_dicom(row['directory'])
-        
-        # save_path = resampled_save_destination_path + str(row['npr']) + '_SUV_CT/' + str(row['scan_date']) + '/' + 'CT_Original'
-        # utils.save_as_gz(CT_img, save_path+'.nii.gz')
 
         # read SUV image to get new size and metadata information
         SUV_img = sitk.ReadImage(resampled_save_destination_path + str(row['npr']) + '_SUV_CT/' + str(row['scan_date']) + '/' + 'SUV' + '.nii.gz')
@@ -163,8 +157,8 @@ for index, row in master_data_bd_sorted.iterrows():
         # vol_img = sitk.Clamp(vol_img,upperBound=3000)
 
         # save resampled SUV image in nifti format
-        save_path= resampled_save_destination_path + str(row['npr']) + '_SUV_CT/' + str(row['scan_date']) + '/' + 'CT'
-        utils.save_as_gz(CT_img, save_path+'.nii.gz')
+        save_path = resampled_save_destination_path + str(row['npr']) + '_SUV_CT/' + str(row['scan_date']) + '/' + 'CT'
+        utils.save_as_gz(CT_img, save_path + '.nii.gz')
 
 # create resampled dataframe with original selected images info        
 resampled_SUV_CT_df = pd.DataFrame(resampled_SUV_CT)
@@ -172,4 +166,4 @@ resampled_SUV_CT_df = pd.DataFrame(resampled_SUV_CT)
 print("Shape of resampled data: ", resampled_SUV_CT_df.shape)
 
 # save resampled dataframe
-resampled_SUV_CT_df.to_excel(source_path_wd + '/resampled_SUV_CT_dataframe.xlsx')
+resampled_SUV_CT_df.to_excel(source_path + config["resampled_SUV_CT_dataframe"])

@@ -16,6 +16,16 @@ sys.path.append(os.path.join(home_directory, 'VSCode', 'UCAN-PET-CT-image-data-h
 
 from Utils import utils
 
+config = utils.read_config()
+system = 0 # 1 or 2
+if system == 1:
+    source_path = config["Source"]["paths"]["source_path_system_1"]
+elif system == 2:
+    source_path = config["Source"]["paths"]["source_path_system_2"]
+else:
+    source_path = ""
+    print("Invalid system")
+
 def display_full(x):
     with pd.option_context("display.max_rows", None,
                            "display.max_columns", None,
@@ -24,8 +34,8 @@ def display_full(x):
                            ):
         print(x)
 
-raw_collages_path = "/media/andres/T7 Shield1/UCAN_project/collages/raw_collages"
-df_of_raw_projections = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/df_of_raw_projections.xlsx")
+raw_collages_path = source_path + config["collages"]["paths"]["raw"]
+df_of_raw_projections = pd.read_excel(source_path + config["raw_projections_dataframe"])
 df_of_raw_projections.head()
 
 df_of_raw_projections["scan_date"] = df_of_raw_projections["scan_date"].astype(str)
@@ -123,5 +133,5 @@ df_of_collages["CT_air"] = df_of_collages["CT_air"].str.replace("SUV_air", "CT_a
 
 df_of_collages = df_of_collages[["patient_ID", "scan_date", "SUV_MIP", "CT_MIP", "SUV_bone", "CT_bone", "SUV_lean", "CT_lean", "SUV_adipose", "CT_adipose", "SUV_air", "CT_air"]]
 df_of_collages = df_of_collages.drop_duplicates()
-df_of_collages.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_raw_collages.xlsx", index=False)
+df_of_collages.to_excel(source_path + config["raw_collages_dataframe"], index=False)
 

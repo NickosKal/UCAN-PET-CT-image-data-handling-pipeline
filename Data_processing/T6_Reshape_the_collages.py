@@ -3,8 +3,20 @@ import os
 import pandas as pd
 from tqdm import tqdm
 
-reshaped_collages_path = "/media/andres/T7 Shield1/UCAN_project/collages/reshaped_collages/"
-df_of_raw_collages = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/df_of_raw_collages.xlsx")
+from Utils import utils
+
+config = utils.read_config()
+system = 0 # 1 or 2
+if system == 1:
+    source_path = config["Source"]["paths"]["source_path_system_1"]
+elif system == 2:
+    source_path = config["Source"]["paths"]["source_path_system_2"]
+else:
+    source_path = ""
+    print("Invalid system")
+
+reshaped_collages_path = source_path + config["collages"]["paths"]["reshaped"]
+df_of_raw_collages = pd.read_excel(source_path + config["raw_collages_dataframe"])
 
 cropped_array = np.zeros((580, 256))
 
@@ -145,4 +157,4 @@ df_of_reshaped_collages["CT_air"] = df_of_reshaped_collages["CT_air"].str.replac
 
 df_of_reshaped_collages = df_of_reshaped_collages[["patient_ID", "scan_date", "SUV_MIP", "CT_MIP", "SUV_bone", "CT_bone", "SUV_lean", "CT_lean", "SUV_adipose", "CT_adipose", "SUV_air", "CT_air"]]
 df_of_reshaped_collages = df_of_reshaped_collages.drop_duplicates()
-df_of_reshaped_collages.to_excel("/media/andres/T7 Shield1/UCAN_project/df_of_reshaped_collages.xlsx", index=False)
+df_of_reshaped_collages.to_excel(source_path + config["reshaped_collages_dataframe"], index=False)

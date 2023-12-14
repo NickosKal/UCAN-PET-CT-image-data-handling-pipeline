@@ -25,7 +25,6 @@ from monai.transforms.spatial.array import RandFlip,RandRotate,RandZoom
 from monai.transforms.intensity.array import ScaleIntensity
 
 from monai.utils.misc import set_determinism
-#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 torch.cuda.empty_cache()
 from tqdm import tqdm
 from generate_dataset import prepare_data
@@ -43,6 +42,21 @@ import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import densenet121
 
+from Utils import utils
+
+# reading main config file
+config = utils.read_config()
+
+system = 0 # 1 or 2
+if system == 1:
+    PATH = config["Source"]["paths"]["source_path_system_1"]
+elif system == 2:
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    PATH = config["Source"]["paths"]["source_path_system_2"]
+else:
+    PATH = ""
+    print("Invalid system")
+
 experiment = 8
 k_fold = 10
 learning_rate = 1e-4
@@ -51,16 +65,11 @@ batch_size_train = 14
 args = {"num_workers": 2,
         "batch_size_val": 1} #25
 
-#df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_model_regression_training.xlsx")
-
-df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/Files_8dec2023/dataset_for_model_regression_training.xlsx")
+df_path = PATH + config['collages_for_rergession_dataframe']
+df = pd.read_excel(df_path)
 df = df.replace("/media/andres/T7 Shield1/UCAN_project/collages/reshaped_collages", "/home/ashish/Ashish/UCAN/ReshapedCollages/collages", regex=True)
 
-checkpoint_path = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_0/Network_Weights/best_model_74.pth.tar"
-# df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_regression_v2.xlsx")
-
-#path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression/"
-path_output = "/home/ashish/Ashish/UCAN/Results/regression/"
+path_output = PATH +config['regression_path']
 
 outcome = "patient_age" # "mtv"
 pre_trained_weights = True
@@ -75,6 +84,8 @@ output_path = os.path.join(path_output, "Experiment_" + str(experiment) + "/")
 
 for k in tqdm(range(k_fold)):
     if k == 0:
+
+        checkpoint_path = utils.load_checkpoints(system, "regression", None, experiment, k)
         print(f"Cross validation for fold {k}")
         max_epochs = 1000
         val_interval = 1 
@@ -84,14 +95,12 @@ for k in tqdm(range(k_fold)):
         metric_values_r_squared = []
         print("Network Initialization")
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        #print(torch.cuda.is_available())
         print(device)
         model = DenseNet121(spatial_dims=2, in_channels=10, out_channels=1, dropout_prob=0.25).to(device)
         
         if pre_trained_weights:
             # Use it in case we have pre trained weights
             print("Checkpoint Loading for Cross Validation: {}".format(k))
-            # checkpoint_path = load_checkpoint(args, k)
             checkpoint = torch.load(checkpoint_path)
             model.load_state_dict(checkpoint['net'])
         else:
@@ -109,19 +118,6 @@ for k in tqdm(range(k_fold)):
         
         if not os.path.exists(output_path + "CV_" + str(k) + '/MIPs/'):
             os.makedirs(output_path + "CV_" + str(k) + '/MIPs/')
-
-        #os.mkdir("dir path", k)
-
-        # factor = round(df.shape[0]/k_fold)
-        # if k == (k_fold - 1):
-        #     df_val = df[factor*k:].reset_index(drop=True)
-        # else:
-        #     df_val = df[factor*k:factor*k+factor].reset_index(drop=True)
-        # df_train = df[~df.scan_date.isin(df_val.scan_date)].reset_index(drop=True)
-
-        #patients_for_train = df_clean[:int(df_clean.shape[0] * 0.7)].patient_ID.tolist()
-        #df_train = df_clean[df_clean.patient_ID.isin(patients_for_train)]
-        #df_val = df_clean[~df_clean.patient_ID.isin(patients_for_train)]
 
         factor = round(df.shape[0]/k_fold)
         if k == (k_fold - 1):
@@ -159,4 +155,3 @@ for k in tqdm(range(k_fold)):
 
             if len(metric_values) > 2:
                 plot(metric_values, path_MAE, "MAE")
-                #plot(metric_values_r_squared, path_r_squared, "R2")
