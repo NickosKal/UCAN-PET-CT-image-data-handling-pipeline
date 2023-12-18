@@ -112,7 +112,7 @@ for k in tqdm(range(k_fold)):
 
     if k >= 0:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 500
+        max_epochs = 100
         val_interval = 1
         best_metric = 0
         best_metric_epoch = -1

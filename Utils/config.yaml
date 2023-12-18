@@ -13,12 +13,27 @@ selection:
 
 # Metadata extraction config variables
 metadata:
+    paths:
+        metadata_path: "/Dataframes/Metadata/"
     filenames:
-        metadata_dataframe: "/Dataframes/Metadata/metadata.xlsx"
-        final_selected_exams_dataframe: "/Dataframes/Metadata/Finalized_dataset.xlsx"
-        regression_dataframe: "/Dataframes/Metadata/Finalized_dataset_exams_with_age.xlsx"
-        classification_dataframe: "/Dataframes/Metadata/dataset_for_training_366patients_baseline_scans_clinical20231129.xlsx"
-        clinical_data: "/Dataframes/Metadata/Lymphoma_Octopus_Export 2023-11-29_C80_only_n1291_incl_YYYY_MM_pnr_removed.xlsx"
+        metadata_all_exams_dataframe: "/Dataframes/Metadata/metadata_all_exams.xlsx"
+        metadata_selected_exams_dataframe: "/Dataframes/Metadata/metadata_selected_exams.xlsx"
+    variables:
+        only_selected_exams: True
+
+# Linked date config variables
+linked:
+    paths:
+        linked_path: "/Dataframes/LinkedData/"
+    filenames:
+        final_selected_exams_dataframe: "/Dataframes/LinkedData/Finalized_dataset.xlsx"
+        regression_dataframe: "/Dataframes/LinkedData/Finalized_dataset_exams_with_age.xlsx"
+        classification_dataframe: "/Dataframes/LinkedData/dataset_for_training_366patients_baseline_scans_clinical20231129.xlsx"
+
+# Clinical Data
+clinical:
+    new_data: "/Dataframes/ClinicalData/Lymphoma_Octopus_Export 2023-11-29_C80_only_n1291_incl_YYYY_MM_pnr_removed.xlsx"
+    old_data: "/Dataframes/ClinicalData/U-CAN Lymfom - Ahlström 211021 - utlämnat_pnr_removed.xlsx"
 
 # Resampling Task config variables
 resampling:

@@ -43,12 +43,24 @@ else:
 print("PATH: ", PATH)
 print("DICOM_PATH: ", DICOM_PATH)
 
-#metadata_dataframe = config["metadata_dataframe"]
-metadata_dataframe = "/Archive/Metadata/metadata.xlsx"
+metadata_path = config["metadata"]["paths"]["metadata_path"]
+
+flag_only_selected_exams = config["metadata"]["variables"]["only_selected_exams"]
+
+if flag_only_selected_exams==True:
+    #metadata_dataframe = config["metadata"]["filenames"]["metadata_all_exams_dataframe"]
+    source_metadata_filename = "/Archive/Metadata/metadata.xlsx"
+else:   
+    #metadata_dataframe = config["metadata"]["filenames"]["metadata_selected_exams_dataframe"]
+    source_metadata_filename = "/Archive/Metadata/metadata.xlsx"
+
+source_metadata_dataframe = PATH + source_metadata_filename
+
+linked_path = config["linked"]["paths"]["linked_path"]
+finalized_dataset = config["linked"]["filenames"]["final_selected_exams_dataframe"]
+finalized_dataset_exams_with_age = config["linked"]["filenames"]["regression_dataframe"]
 
 final_selected_folders_dataframe = config["final_selected_folders_dataframe"]
-
-destination_path = PATH + metadata_dataframe
 
 selection_dataframe = PATH + final_selected_folders_dataframe
 print("selection_dataframe: ", PATH + final_selected_folders_dataframe)
@@ -103,19 +115,19 @@ remove_list = [ 'PR----BONE-PULM-mm',
 
 keep_list = ["CT-", "PT-"]
 
-findir_lst = []
-rejection_lst = []
+filtered_dir_list = []
+rejection_list = []
 
 for dir in directory_list:
     dir = dir.replace('\\', '/')
     if any(item.lower() in dir.lower() for item in keep_list) and all(
             item.lower() not in dir.lower() for item in remove_list):
         #print(dir)
-        findir_lst.append(dir)
+        filtered_dir_list.append(dir)
     else:
-        rejection_lst.append(dir)
+        rejection_list.append(dir)
 
-print("findir_lst: ", findir_lst[:1])
+print("filtered_dir_list: ", filtered_dir_list[:1])
 
 ucan_md_dict = {'dir': [],
                 'source_dir': [],
@@ -155,8 +167,17 @@ ucan_md_dict = {'dir': [],
                 'radionuclide_positron_fraction': [],
                 'radiopharmaceutical_start_date_time': [],
                 }
+
 count = 0
-for dir in dataset_list:
+
+if flag_only_selected_exams==True:
+    # This list is used to extract metadata for only selected exams
+    final_dir_list = dataset_list           
+else:
+    # This list is used to extract metadata for all exams
+    final_dir_list = filtered_dir_list
+
+for dir in final_dir_list:
     #if len(os.listdir(dir))<100:
     #    emptydir_lst.append(dir)
     #    continue
@@ -434,9 +455,10 @@ ucan_md = pd.DataFrame(ucan_md_dict)
 print(ucan_md.shape)
 #(8325, 29)
 #(8275, 29)
-#print(ucan_md.head(2))
 
-ucan_md.dtypes
+
+print("Show column data types: \n", ucan_md.dtypes)
+print("Cleaning columns and correcting data types in metadata")
 ucan_md['imgsz_x'] = np.int64(ucan_md['rows'].str.replace("'","").replace(" ",""))
 ucan_md['imgsz_y'] = np.int64(ucan_md['columns'])
 ucan_md['num_slices'] = np.int64(ucan_md['num_slices'])
@@ -444,13 +466,12 @@ ucan_md['voxsz_x'] = ucan_md['pixel_spacing'].apply(lambda x: (np.float64(x.repl
 ucan_md['voxsz_y'] = ucan_md['pixel_spacing'].apply(lambda x: (np.float64(x.replace(" ","").replace("[","").replace("]","").split(',')[1])))
 ucan_md['slice_thickness'] = np.float64(ucan_md['slice_thickness'].str.replace("'","").replace(" ",""))
 
+print("Creating new voxel_size and image_size columns by combining multiple columns in metadata")
 ucan_md['image_size'] = ucan_md.apply(lambda x: (x.imgsz_x, x.imgsz_y, x.num_slices), axis=1)
 ucan_md['voxel_size'] = ucan_md.apply(lambda x: (x.voxsz_x, x.voxsz_y, x.slice_thickness), axis=1)
-#ucan_md.head(2)
 
-#print(ucan_md.head(2))
-
-#order columns
+#Reordering columns
+print("Reordering columns in desired order in metadata")
 new_col_lst = ['dir', 'source_dir', 'patient_dir', 'image_dir', 'dicom_img',
        'patient_id', 'patient_age', 'patient_sex', 'patient_weight',
        'patient_size', 'rows', 'columns', 'imgsz_x', 'imgsz_y', 'num_slices', 
@@ -466,70 +487,121 @@ new_col_lst = ['dir', 'source_dir', 'patient_dir', 'image_dir', 'dicom_img',
 
 ucan_md = ucan_md[new_col_lst]
 
-print("Toal CT folders: ", ucan_md[ucan_md['image_dir'].str.contains('CT')].shape[0])
-print("Toal PT folders: ", ucan_md[ucan_md['image_dir'].str.contains('PT')].shape[0])
+# Checking total number of CT and PET folders in metadata
+print("Total CT folders: ", ucan_md[ucan_md['image_dir'].str.contains('CT')].shape[0])
+print("Total PT folders: ", ucan_md[ucan_md['image_dir'].str.contains('PT')].shape[0])
 
-ucan_md.to_excel(destination_path)
+# Saving source metadata dataframe
+#ucan_md.to_excel(source_metadata_dataframe, index=False)
 
-#ucan_md[ucan_md['num_slices']<=100].to_excel(os.path.join(source_path, 'exams_with_less_than_100_slices.xlsx'))
+# Analyzing and saving data in different number of slices group
+if flag_only_selected_exams==True:
+    print("\nAnalyzing and saving results in different number of slices group from metadata extracted for only selected exams:")
+    # exams with less than 100 slices
+    selected_exams_with_less_than_100_slices = ucan_md[np.int64(ucan_md['num_slices'])<=100].groupby(['modality', 'slice_thickness', 'num_slices']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #selected_exams_with_less_than_100_slices.to_excel(os.path.join(metadata_path, 'selected_exams_with_less_than_100_slices.xlsx'))
+    print("selected_exams_with_less_than_100_slices shape: ", selected_exams_with_less_than_100_slices.shape)
 
-lessthan100slices_summ = ucan_md[np.int64(ucan_md['num_slices'])<=100].groupby(['modality', 'slice_thickness', 'num_slices']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
-#lessthan100slices_summ.to_excel(os.path.join(source_path, 'exams_with_less_than_100_slices_final.xlsx'))
+    # voxel distribution of exams with less than 100 slices
+    selected_exams_with_less_than_100_slices_voxeldist = selected_exams_with_less_than_100_slices.groupby(['modality', 'voxel_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #selected_exams_with_less_than_100_slices_voxeldist.to_excel(os.path.join(metadata_path, 'selected_exams_with_less_than_100_slices_voxeldist.xlsx'))
 
-print(lessthan100slices_summ.shape)
+    # image size distribution of exams with less than 100 slices
+    selected_exams_with_less_than_100_slices_voxeldist_imgszdist = selected_exams_with_less_than_100_slices.groupby(['modality', 'image_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #selected_exams_with_less_than_100_slices_voxeldist_imgszdist.to_excel(os.path.join(metadata_path, 'selected_exams_with_less_than_100_slices_imgszdist.xlsx'))
 
-ucan_md_voxeldist = ucan_md.groupby(['modality', 'voxel_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
-#ucan_md_voxeldist.to_excel(os.path.join(source_path, 'ucan_exams_md_voxeldist.xlsx'))
-ucan_md_voxeldist.head(10)
+    # exams with greater than and equal 200 slices
+    selected_exams_with_greater_than_200_slices = ucan_md[ucan_md['num_slices']>=200]
+    #selected_exams_with_greater_than_200_slices.to_excel(os.path.join(metadata_path, 'selected_exams_with_greater_than_200_slices.xlsx'))
+    print("selected_exams_with_greater_than_200_slices shape: ", selected_exams_with_greater_than_200_slices.shape)
 
-ucan_md_imgszdist = ucan_md.groupby(['modality', 'image_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
-#ucan_md_imgszdist.to_excel(os.path.join(source_path, 'ucan_exams_md_imgszdist.xlsx'))
-ucan_md_imgszdist.head(10)
+    # voxel distribution of exams with greater than and equal 200 slices
+    selected_exams_with_greater_than_200_slices_voxeldist = selected_exams_with_greater_than_200_slices.groupby(['modality', 'voxel_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #selected_exams_with_greater_than_200_slices_voxeldist.to_excel(os.path.join(metadata_path, 'selected_exams_with_greater_than_200_slices_voxeldist.xlsx'))
 
-ucan_md_gt200slices = ucan_md[ucan_md['num_slices']>=200]
-#ucan_md_gt200slices.to_excel(os.path.join(source_path, 'ucan_exams_with_more_than_200_slices.xlsx'))
-print(ucan_md_gt200slices.shape)
-ucan_md_gt200slices.head(2)
+    # image size distribution of exams with greater than and equal 200 slices
+    selected_exams_with_greater_than_200_slices_imgszdist = selected_exams_with_greater_than_200_slices.groupby(['modality', 'image_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #selected_exams_with_greater_than_200_slices_imgszdist.to_excel(os.path.join(metadata_path, 'selected_exams_with_greater_than_200_slices_imgszdist.xlsx'))
 
-ucan_md_gt200slices_voxeldist = ucan_md_gt200slices.groupby(['modality', 'voxel_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
-#ucan_md_gt200slices_voxeldist.to_excel(os.path.join(source_path, 'ucan_exams_with_more_than_200_slices_voxeldist.xlsx'))
-ucan_md_gt200slices_voxeldist.head(10)
+    # exams with greater than and equal 200 slices
+    selected_exams_with_less_than_200_slices = ucan_md[ucan_md['num_slices']<200]
+    #selected_exams_with_less_than_200_slices.to_excel(os.path.join(metadata_path, "selected_exams_with_less_than_200_slices.xlsx"))
+    print("selected_exams_with_less_than_200_slices shape: ", selected_exams_with_less_than_200_slices.shape)
 
-ucan_md_gt200slices_imgszdist = ucan_md_gt200slices.groupby(['modality', 'image_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
-#ucan_md_gt200slices_imgszdist.to_excel(os.path.join(source_path, 'ucan_exams_with_more_than_200_slices_imagesizedist.xlsx'))
-ucan_md_gt200slices_imgszdist.head(10)
+    # voxel distribution of exams with greater than and equal 200 slices
+    selected_exams_with_less_than_200_slices_voxeldist = selected_exams_with_less_than_200_slices.groupby(['modality', 'voxel_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #selected_exams_with_less_than_200_slices_voxeldist.to_excel(os.path.join(metadata_path, 'selected_exams_with_less_than_200_slices_voxeldist.xlsx'))
 
-Lessthan_200Slices = ucan_md[ucan_md['num_slices']<200]
-#Lessthan_200Slices.to_excel(os.path.join(source_path, "less_than_200_slices.xlsx"))
-print(Lessthan_200Slices.shape)
-Lessthan_200Slices.head(2)
+    # image size distribution of exams with greater than and equal 200 slices
+    selected_exams_with_less_than_200_slices_imgszdist = selected_exams_with_less_than_200_slices.groupby(['modality', 'image_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #selected_exams_with_less_than_200_slices_imgszdist.to_excel(os.path.join(metadata_path, 'selected_exams_with_less_than_200_slices_imgszdist.xlsx'))
+else:
+    print("\nAnalyzing and saving results in different number of slices group from metadata extracted for all exams:")
+    # exams with less than 100 slices
+    all_exams_with_less_than_100_slices = ucan_md[np.int64(ucan_md['num_slices'])<=100].groupby(['modality', 'slice_thickness', 'num_slices']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #all_exams_with_less_than_100_slices.to_excel(os.path.join(metadata_path, 'all_exams_with_less_than_100_slices.xlsx'))
+    print("all_exams_with_less_than_100_slices shape: ", all_exams_with_less_than_100_slices.shape)
+
+    # voxel distribution of exams with less than 100 slices
+    all_exams_with_less_than_100_slices_voxeldist = all_exams_with_less_than_100_slices.groupby(['modality', 'voxel_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #all_exams_with_less_than_100_slices_voxeldist.to_excel(os.path.join(metadata_path, 'all_exams_with_less_than_100_slices_voxeldist.xlsx'))
+
+    # image size distribution of exams with less than 100 slices
+    all_exams_with_less_than_100_slices_voxeldist_imgszdist = all_exams_with_less_than_100_slices.groupby(['modality', 'image_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #all_exams_with_less_than_100_slices_voxeldist_imgszdist.to_excel(os.path.join(metadata_path, 'all_exams_with_less_than_100_slices_voxeldist_imgszdist.xlsx'))
+
+    # exams with greater than and equal 200 slices
+    all_exams_with_greater_than_200_slices = ucan_md[ucan_md['num_slices']>=200]
+    #all_exams_with_greater_than_200_slices.to_excel(os.path.join(metadata_path, 'all_exams_with_greater_than_200_slices.xlsx'))
+    print("all_exams_with_greater_than_200_slices shape: ", all_exams_with_greater_than_200_slices.shape)
+
+    # voxel distribution of exams with greater than and equal 200 slices
+    all_exams_with_greater_than_200_slices_voxeldist = all_exams_with_greater_than_200_slices.groupby(['modality', 'voxel_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #all_exams_with_greater_than_200_slices_voxeldist.to_excel(os.path.join(metadata_path, 'all_exams_with_greater_than_200_slices_voxeldist.xlsx'))
+
+    # image size distribution of exams with greater than and equal 200 slices
+    all_exams_with_greater_than_200_slices_imgszdist = all_exams_with_greater_than_200_slices.groupby(['modality', 'image_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #all_exams_with_greater_than_200_slices_imgszdist.to_excel(os.path.join(metadata_path, 'all_exams_with_greater_than_200_slices_imgszdist.xlsx'))
+
+    # exams with greater than and equal 200 slices
+    all_exams_with_less_than_200_slices = ucan_md[ucan_md['num_slices']<200]
+    #all_exams_with_less_than_200_slices.to_excel(os.path.join(metadata_path, "all_exams_with_less_than_200_slices.xlsx"))
+    print("all_exams_with_less_than_200_slices shape: ", all_exams_with_less_than_200_slices.shape)
+
+    # voxel distribution of exams with greater than and equal 200 slices
+    all_exams_with_less_than_200_slices_voxeldist = all_exams_with_less_than_200_slices.groupby(['modality', 'voxel_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #all_exams_with_less_than_200_slices_voxeldist.to_excel(os.path.join(metadata_path, 'all_exams_with_less_than_200_slices_voxeldist.xlsx'))
+
+    # image size distribution of exams with greater than and equal 200 slices
+    all_exams_with_less_than_200_slices_imgszdist = all_exams_with_less_than_200_slices.groupby(['modality', 'image_size']).agg({'dicom_img':'count'}).sort_values('dicom_img' ,ascending=False).reset_index()
+    #all_exams_with_less_than_200_slices_imgszdist.to_excel(os.path.join(metadata_path, 'all_exams_with_less_than_200_slices_imgszdist.xlsx'))
 
 
-# Match Metadata with Selected Files
-metadata = pd.read_excel(destination_path)
-# metadata['dir'] = metadata['dir'].str.replace('/','\\')
-print(metadata.shape)
-metadata.head(2)
+# Link Metadata with Selected Exams
+metadata = pd.read_excel(source_metadata_dataframe)
+metadata['dir'] = metadata['dir'].str.replace('\\','/')
+print("Metadata shape: ", metadata.shape)
 
 selected_imgs = pd.read_excel(selection_dataframe)
-print(selected_imgs.shape)
-selected_imgs.head(2)
+print("Selected exams shape: ", selected_imgs.shape)
 
 print("Number of exam in the selected_imgs dataframe", selected_imgs.patient_directory.nunique())
+print("Number of patients in the selected_imgs dataframe", selected_imgs.npr.nunique())
 
-
+print("Merging metadata with selected exams data")
 master_data = pd.merge(selected_imgs, metadata, how="inner", left_on=['patient_directory', 'PET-CT_info'], right_on=['patient_dir', 'image_dir'], sort=True, suffixes=("_x", "_y"))
 
 col_drop_lst = ['dir', 'source_dir', 'patient_dir',	'image_dir', 'patient_sex', 'rows',	'columns', 'pixel_spacing']
 
+print("Dropping unnecessary column from merged data")
 master_data = master_data.drop(columns=col_drop_lst)
 
+print("Cleaning columns in merged data")
 master_data['patient_id'] = master_data['patient_id'].apply(lambda x: x.split('_')[1].replace("'",""))
 master_data['patient_age'] = master_data['patient_age'].apply(lambda x: x.replace("'","").replace("Y","").replace(" ",""))#.astype('Int64')
 master_data['modality'] = master_data['modality'].apply(lambda x: x.strip().replace("'","").strip())
 
-#master_data.to_excel(os.path.join(source_path, "Excel_files/06_11_2023/Finalized_dataset.xlsx"))
-#print(master_data.head())
+#master_data.to_excel(finalized_dataset)
 
 # Check no of patients having age in the metadata
 print("Master data shape: ", master_data.shape)
@@ -543,8 +615,7 @@ print("Master data shape: ", master_data_having_age.shape)
 print("Total number of patients: ", master_data_having_age.npr.nunique())
 print("Total number of exams: ", master_data_having_age.patient_directory.nunique())
 
-master_data_having_age.to_excel(os.path.join(source_path, "Excel_files/06_11_2023/Finalized_dataset_1805_exams_with_Age.xlsx"))
-
+#master_data_having_age.to_excel(finalized_dataset_exams_with_age)
 
 print("\nSummary for CT images:")
 print("Mode of x image dims: ", master_data[master_data['modality']=='CT']['imgsz_x'].mode()[0])
