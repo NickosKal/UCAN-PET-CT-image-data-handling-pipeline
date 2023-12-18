@@ -2,19 +2,20 @@
 # Source paths
 Source:
     paths:
-        source_path_system_1: '/media/andres/T7 Shield1/UCAN_project'
-        source_path_system_2: '/home/ashish/Ashish/UCAN'
+        source_path_system_1: "/media/andres/T7 Shield1/UCAN_project"
+        source_path_system_2: "/home/ashish/Ashish/UCAN"
 
 # Selection script config variables
 selection:
     filenames:
-        path_to_exams_folder_system_1: '/media/andres/T7 Shield1/ucan_lymfom'
+        path_to_exams_folder_system_1: "/media/andres/T7 Shield1/ucan_lymfom"
         path_to_exams_folder_system_2: "/home/ashish/Ashish/T7 Shield1/ucan_lymfom"
 
 # Metadata extraction config variables
 metadata:
     filenames:
-        final_selected_exams_dataframe: '/Dataframes/Metadata/Finalized_dataset.xlsx'
+        metadata_dataframe: "/Dataframes/Metadata/metadata.xlsx"
+        final_selected_exams_dataframe: "/Dataframes/Metadata/Finalized_dataset.xlsx"
         regression_dataframe: "/Dataframes/Metadata/Finalized_dataset_exams_with_age.xlsx"
         classification_dataframe: "/Dataframes/Metadata/dataset_for_training_366patients_baseline_scans_clinical20231129.xlsx"
         clinical_data: "/Dataframes/Metadata/Lymphoma_Octopus_Export 2023-11-29_C80_only_n1291_incl_YYYY_MM_pnr_removed.xlsx"
@@ -28,12 +29,12 @@ resampling:
 # Projection config variables
 projections:
     paths:
-        raw_projections_path: '/2D_projections/raw_projections/'
+        raw_projections_path: "/2D_projections/raw_projections/"
         raw_projections_alternative_path: "/2D_projections/raw_projections_lean_bone_alternatives/"
     variables:
-        modality: ['CT', 'PT', 'SUV']
-        tissue_type: ['LT', 'AT', 'LT' , 'B' , 'N']
-        projection_type: ['sum', 'min', 'max', 'mean', 'std']
+        modality: ["CT", "PT", "SUV"]
+        tissue_type: ["LT", "AT", "LT" , "B" , "N"]
+        projection_type: ["sum", "min", "max", "mean", "std"]
         angles: [0, 90]
 
 # Collages paths

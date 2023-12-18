@@ -16,7 +16,7 @@ from tqdm import tqdm
 #import cc3d
 import SimpleITK as sitk
 import cv2
-# os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
+os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.ndimage.measurements import label
@@ -77,8 +77,7 @@ def save_model(model, epoch, optimizer, k, path_Output):
     torch.save(state, os.path.join(path_Output, "CV_" + str(k) + "/Network_Weights/best_model_{}.pth.tar".format(best_metric_epoch)))
 
 def validation_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_Output, outcome):
-    #df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction', 'prediction_probability (sex)'])
-    df_performance = pd.DataFrame(columns=['pat_ID', 'scan_date', 'GT', 'prediction'])
+    df_performance = pd.DataFrame(columns=['patient_ID', 'scan_date', 'GT', 'prediction'])
 
     df_val["unique_pat_ID_scan_date"] = df_val.apply(lambda x: str(x["patient_ID"]) + "_" + str(x["scan_date"]), axis=1)
     unique_pat_ID_scan_date = np.unique(df_val["unique_pat_ID_scan_date"])
@@ -100,7 +99,6 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
 
             labels = torch.LongTensor(labels)
             inputs, labels = inputs.to(device), labels.numpy()
-            #inputs = torch.unsqueeze(inputs, dim=0)
             outputs= torch.nn.Softmax(dim=1)(model(inputs))
             
             softmax_out = outputs.data.cpu().numpy()
@@ -130,12 +128,12 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
 
         # For sex classification
         if outcome == "sex":
-            df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [softmax_out.index(max(softmax_out))],
+            df_temp_new = pd.DataFrame({'patient_ID': [pat_id], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [softmax_out.index(max(softmax_out))],
                                         'prediction_probability male': [softmax_out[0]], 'prediction_probability male': [softmax_out[1]]})
 
         # For diagnosis classification
         else:
-            df_temp_new = pd.DataFrame({'patient_ID': [pat_id[0]], 
+            df_temp_new = pd.DataFrame({'patient_ID': [pat_id], 
                                         'scan_date': [scan_date], 
                                         'GT': [scan_GT], 
                                         'prediction': [softmax_out.index(max(softmax_out))], 
@@ -143,7 +141,6 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
                                         'prediction_probability C83 (diagnosis)': [softmax_out[1]], 
                                         'prediction_probability Others (diagnosis)': [softmax_out[2]]})
         
-        #df_performance = df_performance.append(df_temp_new, ignore_index=True) # type: ignore
         df_performance = pd.concat([df_performance, df_temp_new], ignore_index=True)
 
 
@@ -162,7 +159,6 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
         idx_classes = ["C81_GT", "C83_GT", "Others_GT"]
         col_classes = ["C81_Pred", "C83_Pred", "Others_Pred"]
         confusion_matrix_df = pd.DataFrame(confusion_matrix(GT, pred), columns=col_classes, index=idx_classes)
-        #ax = sns.heatmap(confusion_matrix_df, annot=True)
         print(confusion_matrix_df)
         #plt.title("Classification Confusion Matrix")
         #plt.show()
@@ -179,10 +175,6 @@ def validation_classification(args, k, epoch, optimizer, model, df_val, device, 
     return metric_values, best_metric
 
 def calculate_multiclass_metrics(pred_prob, GT):
-    #print("prediction: ", pred_labels)
-    #print("GT: ", GT)
-    # Calculate True Positives (TP), True Negatives (TN), False Positives (FP), and False Negatives (FN)
-
     c_k_score = cohen_kappa_score(np.argmax(np.array(pred_prob),axis=1), GT)
     
     pred_prob = torch.tensor(pred_prob)
@@ -294,8 +286,6 @@ def validation_regression(args, k, epoch, optimizer, model, df_val, device, best
     for unique_patient_ID_scan_date in tqdm(unique_patient_ID_scan_date):
         #Patient-wise Validation
         df_temp = df_val[df_val["unique_patient_ID_scan_date"]==unique_patient_ID_scan_date].reset_index(drop=True)
-        # pat_id = np.unique(df_temp["unique_patient_ID_scan_date"])
-        #val_files, val_loader = prepare_data(args, df_temp, shuffle=False, label="age")
         val_files, val_loader = prepare_data(args, df_temp, args["batch_size_val"], shuffle=False, label=outcome)
 
         prediction_temp = []
@@ -330,11 +320,7 @@ def validation_regression(args, k, epoch, optimizer, model, df_val, device, best
         #print("Prediction: ", scan_prediction)
 
         df_temp_new = pd.DataFrame({'unique_patient_ID_scan_date': [unique_patient_ID_scan_date], 'GT': [scan_GT], 'prediction (age)': [scan_prediction]})
-        #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction (MTV (ml))': [scan_prediction]})
-        #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction (lean_volume (L))': [scan_prediction]})
-        #df_temp_new = pd.DataFrame({'pat_ID': [pat_id[0]], 'scan_date': [scan_date], 'GT': [scan_GT], 'lesion_count': [scan_prediction]})
 
-        #df_performance = df_performance.append(df_temp_new, ignore_index=True) # type: ignore
         df_performance = pd.concat([df_performance, df_temp_new], ignore_index=True)
 
         prediction.append(scan_prediction)
@@ -343,9 +329,6 @@ def validation_regression(args, k, epoch, optimizer, model, df_val, device, best
 
     #metric = np.mean(L1_loss)
     metric = mean_absolute_error(np.array(df_performance["GT"]), np.array(df_performance["prediction (age)"]))
-    #metric = mean_absolute_error(np.array(df_performance["GT"]), np.array(df_performance["prediction (MTV (ml))"]))
-    #metric = mean_absolute_error(np.array(df_performance["GT"]), np.array(df_performance["prediction (lean_volume (L))"]))
-    #metric = mean_absolute_error(np.array(df_performance["GT"]), np.array(df_performance["lesion_count"]))
 
     #metric = r2_score(np.array(df_performance["GT"]), np.array(df_performance["lesion_count"]))
 

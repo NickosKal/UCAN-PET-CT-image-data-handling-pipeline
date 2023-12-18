@@ -313,29 +313,31 @@ def best_model_selection_from_fold(system, type, category, experiment_number, fo
     path_object = Path(path)
     models = path_object.glob("*")
     models_sorted = sorted(models, key=lambda model: model.name)
-    return path + [model.name for model in models_sorted][-1]
+    best_model_path = path + [model.name for model in models_sorted][-1]
+    epoch_to_continue = best_model_path.split("_")[-1].split(".")[0]
+    return best_model_path, epoch_to_continue
     
 def load_checkpoints(system, type, category, experiment_number, fold_number):
 
     if fold_number == 0:
-        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+        checkpoint_path, epoch_to_continue = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
     elif fold_number == 1:
-        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+        checkpoint_path, epoch_to_continue = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
     elif fold_number == 2:
-        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+        checkpoint_path, epoch_to_continue = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
     elif fold_number == 3:
-        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+        checkpoint_path, epoch_to_continue = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
     elif fold_number == 4:
-        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+        checkpoint_path, epoch_to_continue = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
     elif fold_number == 5:
-        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+        checkpoint_path, epoch_to_continue = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
     elif fold_number == 6:
-        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+        checkpoint_path, epoch_to_continue = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
     elif fold_number == 7:
-        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+        checkpoint_path, epoch_to_continue = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
     elif fold_number == 8:
-        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+        checkpoint_path, epoch_to_continue = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
     elif fold_number == 9:
-        checkpoint_path = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+        checkpoint_path, epoch_to_continue = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
     
-    return checkpoint_path
+    return checkpoint_path, epoch_to_continue
