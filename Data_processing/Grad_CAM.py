@@ -11,52 +11,59 @@ from tqdm import tqdm
 import pandas as pd
 import os
 os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
+import sys
 
+parent_dir = os.path.abspath('../')
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+    
+from Utils import utils
 
-def main():
+# reading main config file
+config = utils.read_config()
+
+system = 2 # 1 or 2
+if system == 1:
+    PATH = config["Source"]["paths"]["source_path_system_1"]
+elif system == 2:
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    PATH = config["Source"]["paths"]["source_path_system_2"]
+else:
+    PATH = ""
+    print("Invalid system")
+
+def main(output_path, k, system):
     model = DenseNet121(spatial_dims=2, in_channels=10,
                         out_channels=1, dropout_prob=0.0).cuda()
 
-    cv_0 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_0/Network_Weights/best_model_169.pth.tar"
-    cv_1 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_1/Network_Weights/best_model_81.pth.tar"
-    cv_2 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_2/Network_Weights/best_model_99.pth.tar"
-    cv_3 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_3/Network_Weights/best_model_96.pth.tar"
-    cv_4 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_4/Network_Weights/best_model_88.pth.tar"
-    cv_5 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_5/Network_Weights/best_model_86.pth.tar"
-    cv_6 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_6/Network_Weights/best_model_52.pth.tar"
-    cv_7 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_7/Network_Weights/best_model_648.pth.tar"
-    cv_8 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_8/Network_Weights/best_model_96.pth.tar"
-    cv_9 = "/home/ashish/Ashish/UCAN/Results/regression/Experiment_8/CV_9/Network_Weights/best_model_67.pth.tar"
-    
     K = 10
-    k = 0
-
-    if k == 0:
-        checkpoint_path = cv_0
-    elif k == 1:
-        checkpoint_path = cv_1
-    elif k == 2:
-        checkpoint_path = cv_2
-    elif k == 3:
-        checkpoint_path = cv_3
-    elif k == 4:
-        checkpoint_path = cv_4
-    elif k == 5:
-        checkpoint_path = cv_5
-    elif k == 6:
-        checkpoint_path = cv_6
-    elif k == 7:
-        checkpoint_path = cv_7
-    elif k == 8:
-        checkpoint_path = cv_8
-    elif k == 9:
-        checkpoint_path = cv_9
+    for fold in range(k):
+        output_path = output_path + f"CV_{fold}/"
+        if fold == 0:
+            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
+        elif fold == 1:
+            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
+        elif fold == 2:
+            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
+        elif fold == 3:
+            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
+        elif fold == 4:
+            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
+        elif fold == 5:
+            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
+        elif fold == 6:
+            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
+        elif fold == 7:
+            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
+        elif fold == 8:
+            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
+        elif fold == 9:
+            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
 
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['net'])
 
-    df = pd.read_excel("/home/ashish/Ashish/UCAN/ReshapedCollages/Files/dataset_for_model_regression_training.xlsx")
-    df = df.replace('/media/andres/T7 Shield1/UCAN_project/collages/reshaped_collages', '/home/ashish/Ashish/UCAN/ReshapedCollages/collages', regex=True)
+    df = pd.read_excel(PATH + config['collages_for_rergession_dataframe'])
 
     df_rot_mips_collages = df.copy()
     df_sorted = df_rot_mips_collages.sort_values(by="patient_ID")
@@ -82,7 +89,7 @@ def main():
         patient_ID = row["patient_ID"]
         scan_date = row["scan_date"]
 
-        grad_cam_analysis(patient_ID, scan_date, model)
+        grad_cam_analysis(system, output_path, patient_ID, scan_date, model)
 
 class ImageDataset(Dataset):
     def __init__(self, SUV_MIP_files, SUV_bone_files, SUV_lean_files, SUV_adipose_files, SUV_air_files, CT_MIP_files, CT_bone_files, CT_lean_files, CT_adipose_files, CT_air_files, labels):
@@ -223,23 +230,23 @@ def prepare_data(df_train, batch_size, shuffle=None, label=None):
     return train_files, train_loader
 
 
-def grad_cam_analysis(patient_ID, scan_date, model):
+def grad_cam_analysis(system, output_path, patient_ID, scan_date, model):
 
     df_temp = pd.DataFrame(columns=["patient_ID", "scan_date"])
     df_temp["patient_ID"] = [str(patient_ID)]
     df_temp["scan_date"] = [str(scan_date)]
 
     df_temp["unique_pat_ID_scan_date"] = df_temp["patient_ID"] + "_" + df_temp["scan_date"]
-    df_temp["SUV_MIP"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/SUV_MIP.npy"]
-    df_temp["SUV_bone"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/SUV_bone.npy"]
-    df_temp["SUV_lean"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/SUV_lean.npy"]
-    df_temp["SUV_adipose"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/SUV_adipose.npy"]
-    df_temp["SUV_air"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/SUV_air.npy"]
-    df_temp["CT_MIP"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/CT_MIP.npy"]
-    df_temp["CT_bone"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/CT_bone.npy"]
-    df_temp["CT_lean"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/CT_lean.npy"]
-    df_temp["CT_adipose"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/CT_adipose.npy"]
-    df_temp["CT_air"] = ["/home/ashish/Ashish/UCAN/ReshapedCollages/collages/" + str(patient_ID) + "/" + str(scan_date) + "/CT_air.npy"]
+    df_temp["SUV_MIP"] = [config["Source"]["paths"][f"source_path_system_{system}"] + config["collages"]["paths"]["reshaped"] + str(patient_ID) + "/" + str(scan_date) + "/SUV_MIP.npy"]
+    df_temp["SUV_bone"] = [config["Source"]["paths"][f"source_path_system_{system}"] + config["collages"]["paths"]["reshaped"] + str(patient_ID) + "/" + str(scan_date) + "/SUV_bone.npy"]
+    df_temp["SUV_lean"] = [config["Source"]["paths"][f"source_path_system_{system}"] + config["collages"]["paths"]["reshaped"] + str(patient_ID) + "/" + str(scan_date) + "/SUV_lean.npy"]
+    df_temp["SUV_adipose"] = [config["Source"]["paths"][f"source_path_system_{system}"] + config["collages"]["paths"]["reshaped"] + str(patient_ID) + "/" + str(scan_date) + "/SUV_adipose.npy"]
+    df_temp["SUV_air"] = [config["Source"]["paths"][f"source_path_system_{system}"] + config["collages"]["paths"]["reshaped"] + str(patient_ID) + "/" + str(scan_date) + "/SUV_air.npy"]
+    df_temp["CT_MIP"] = [config["Source"]["paths"][f"source_path_system_{system}"] + config["collages"]["paths"]["reshaped"] + str(patient_ID) + "/" + str(scan_date) + "/CT_MIP.npy"]
+    df_temp["CT_bone"] = [config["Source"]["paths"][f"source_path_system_{system}"] + config["collages"]["paths"]["reshaped"] + str(patient_ID) + "/" + str(scan_date) + "/CT_bone.npy"]
+    df_temp["CT_lean"] = [config["Source"]["paths"][f"source_path_system_{system}"] + config["collages"]["paths"]["reshaped"] + str(patient_ID) + "/" + str(scan_date) + "/CT_lean.npy"]
+    df_temp["CT_adipose"] = [config["Source"]["paths"][f"source_path_system_{system}"] + config["collages"]["paths"]["reshaped"] + str(patient_ID) + "/" + str(scan_date) + "/CT_adipose.npy"]
+    df_temp["CT_air"] = [config["Source"]["paths"][f"source_path_system_{system}"] + config["collages"]["paths"]["reshaped"] + str(patient_ID) + "/" + str(scan_date) + "/CT_air.npy"]
     df_temp["patient_age"] = [33]
     
     layers_to_visualize = [model.features.transition3, model.features.transition2,
@@ -277,7 +284,6 @@ def grad_cam_analysis(patient_ID, scan_date, model):
         # Clip values to stay within [0, 1] range
         overlayed_image = np.clip(overlayed_image, 0, 1)
 
-        output_path = "/home/ashish/Ashish/UCAN/Results/GradCam_analysis"
         save_path = os.path.join(output_path, patient_ID, scan_date)
 
         if not os.path.exists(save_path):
@@ -294,4 +300,7 @@ def grad_cam_analysis(patient_ID, scan_date, model):
         print(patient_ID)
 
 if __name__ == "__main__":
-    main()
+
+    output_path = "/home/ashish/Ashish/UCAN/Results/GradCam_analysis/"
+    main(output_path, 0, 2)
+
