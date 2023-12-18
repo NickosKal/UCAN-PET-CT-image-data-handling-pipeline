@@ -13,18 +13,23 @@ from monai.data.utils import list_data_collate, decollate_batch
 from monai.data.dataloader import DataLoader
 from monai.data.image_dataset import ImageDataset
 from tqdm import tqdm
-#import cc3d
 import SimpleITK as sitk
 import cv2
-os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.ndimage.measurements import label
-#import nibabel as nib
 import scipy.ndimage
 from sklearn.metrics import confusion_matrix, mean_absolute_error, r2_score, cohen_kappa_score
 from torcheval.metrics.functional import multiclass_auroc, multiclass_accuracy, multiclass_recall, multiclass_precision
 from Task4.cross_validation.generate_dataset import prepare_data
+
+def working_system(system):
+    if system == 1:
+        pass        
+    elif system == 2:
+        os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
+    else:
+        print("Invalid system")
 
 def make_dirs(path, k):
     path_CV = os.path.join(path, "CV_" + str(k))
@@ -241,33 +246,21 @@ def train_regression(model, train_files, train_loader, optimizer, loss_function,
     epoch_loss = 0
     step = 0
     i = 0
-    #print('train_regression')
     for inputs, labels in tqdm(train_loader):
-        #print(train_files[i]['SUV_MIP'])
-        #labels = labels.type(torch.LongTensor)
-        #print(inputs.shape)
         step += 1
         i += 1
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
-        #print('1')
         output_logits = model(inputs).view(-1)
-        #print('output_logits: ', output_logits)
         output_logits = output_logits.float()  # Convert logits to torch.float32
         labels = labels.float()
-        #print("output: ", output_logits)
-        #print("labels: ", labels)
 
         loss = loss_function(output_logits, labels)
-        #loss = loss_function(predicted_output, labels)
-        #print('loss: ', loss)
-        #loss = huber_loss_function(output_logits, labels)
 
         loss.backward()
         optimizer.step()
         epoch_loss += loss.item()
     epoch_loss /= step
-    #print("Train MSE: ", epoch_loss)
     loss_values.append(epoch_loss)
     return epoch_loss, loss_values
 
@@ -293,21 +286,14 @@ def validation_regression(args, k, epoch, optimizer, model, df_val, device, best
         #loss_temp_MAE = []
         for inputs, labels in val_loader:
             model.eval()
-            #labels = labels.type(torch.LongTensor)
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs).view(-1)
             outputs = outputs.float()  # Convert logits to torch.float32
             labels = labels.float()
-            #print(labels)
             loss = loss_function(outputs, labels)
-            #loss = huber_loss_function(outputs, labels)
-
-            #loss_MAE = loss_function(outputs, labels)
 
             outputs = outputs.data.cpu().numpy()
             labels = labels.data.cpu().numpy()
-            #print("outputs: ", outputs)
-            #print("labels: ", labels)
 
             prediction_temp.append(outputs)
             loss_temp.append(loss.data.cpu().numpy())
@@ -315,9 +301,6 @@ def validation_regression(args, k, epoch, optimizer, model, df_val, device, best
         scan_prediction = np.mean(prediction_temp)
         scan_GT = labels[0] # type: ignore
         scan_loss = np.mean(loss_temp)
-
-        #print("GT: ", scan_GT)
-        #print("Prediction: ", scan_prediction)
 
         df_temp_new = pd.DataFrame({'unique_patient_ID_scan_date': [unique_patient_ID_scan_date], 'GT': [scan_GT], 'prediction (age)': [scan_prediction]})
 
@@ -337,11 +320,9 @@ def validation_regression(args, k, epoch, optimizer, model, df_val, device, best
     ##metric_r_squared = r2_score(df_performance["GT"]), np.array(df_performance["prediction (MTV (ml))"])
     ##metric_r_squared = r2_score(df_performance["GT"]), np.array(df_performance["prediction (lean_volume (L))"])
 
-    #print("Validation Smooth L1 Loss: ", np.mean(L1_loss))
     print("Validation metric: ", metric)
 
     metric_values.append(metric)
-    #metric_values_r_squared.append(metric_r_squared)
 
     #Save the model if metric is increasing
     if metric < best_metric:

@@ -31,18 +31,19 @@ parent_dir = os.path.abspath('../')
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from Task4.utils import train_classification, validation_classification, plot_auc
+from Task4.utils import train_classification, validation_classification, plot_auc, working_system
 
 from Utils import utils
 
 # reading main config file
 config = utils.read_config()
-system = 0 # 1 or 2
+system = 1 # 1 or 2
 if system == 1:
     PATH = config["Source"]["paths"]["source_path_system_1"]
 elif system == 2:
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     PATH = config["Source"]["paths"]["source_path_system_2"]
+    working_system(system)
 else:
     PATH = ""
     print("Invalid system")
@@ -70,8 +71,8 @@ def stratified_split(df_clean, k):
 outcome = "GT_diagnosis_label" # sex
 experiment = 1
 k_fold = 10
-learning_rate = 5e-5
-weight_decay = 5e-5
+learning_rate = 1e-4
+weight_decay = 1e-5
 batch_size_train = 10
 args = {"num_workers": 2,
         "batch_size_val": 1}
@@ -80,7 +81,7 @@ df_path = PATH + config["collages_for_classification_dataframe"]
 df = pd.read_excel(df_path)
 df_sorted = df.sort_values(by="patient_ID")
 
-path_output = PATH +config['classification_path']
+path_output = PATH + config['classification_path']
 
 path_output_for_sex = os.path.join(path_output, "Sex" + "/" + "Experiment_" + str(experiment) + "/")
 if not os.path.exists(path_output_for_sex):
@@ -100,15 +101,14 @@ else:
     folder_name = ""
     output_channels = 1
 
-pre_trained_weights = True
+pre_trained_weights = False
 
 for k in tqdm(range(k_fold)):
-    if k >= 1:
 
-        checkpoint_path = utils.load_checkpoints(system, "classification", folder_name, experiment, k)
+    if k >= 2:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 100000
-        val_interval = 5
+        max_epochs = 500
+        val_interval = 1
         best_metric = 0
         best_metric_epoch = -1
         metric_values = []
@@ -119,11 +119,10 @@ for k in tqdm(range(k_fold)):
         
         if pre_trained_weights:
             # Load pre trained weights
-            # print("Checkpoint Loading for Cross Validation: {}".format(k))
-            # checkpoint_path = load_checkpoint(args, k)
-            # checkpoint = torch.load(checkpoint_path)
-            # model.load_state_dict(checkpoint["net"])
-            pass
+            print("Checkpoint Loading for Cross Validation: {}".format(k))
+            checkpoint_path, epoch_to_continue = utils.load_checkpoints(system, "classification", folder_name, experiment, k)
+            checkpoint = torch.load(checkpoint_path)
+            model.load_state_dict(checkpoint["net"])
         else:
             print("Training from Scratch!!")
 
@@ -166,6 +165,11 @@ for k in tqdm(range(k_fold)):
 
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
+            if pre_trained_weights:
+                epoch = epoch + int(epoch_to_continue) + 1
+            else:
+                pass
+
             epoch_loss, train_loss = train_classification(model, train_loader, optimizer, loss_function_diagnosis, device, train_loss, outcome)
             print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}")
 
