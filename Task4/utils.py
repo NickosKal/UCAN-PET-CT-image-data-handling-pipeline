@@ -190,14 +190,13 @@ def validation_sex_classification(args, k, epoch, optimizer, model, df_val, devi
 
         if np.mean(pred_prob_male) > np.mean(pred_prob_female):
             scan_prediction = 1
-            scan_pred_prob = np.mean(pred_prob_male)
         else:
             scan_prediction = 0
-            scan_pred_prob = np.mean(pred_prob_female)
-        scan_GT = labels[0] # type: ignore
+        scan_pred_prob = np.mean(pred_prob_male)
+        scan_GT = labels[0] 
 
         df_temp_new = pd.DataFrame({'patient_ID': [pat_id], 'scan_date': [scan_date], 'GT': [scan_GT], 'prediction': [scan_prediction],
-                                        'prediction_probability_male': [pred_prob_male], 'prediction_probability_female': [pred_prob_female]})
+                                        'prediction_probability (sex)': [scan_pred_prob]})
 
         #df_performance = df_performance.append(df_temp_new, ignore_index=True) # type: ignore
         df_performance = pd.concat([df_performance, df_temp_new], ignore_index=True)

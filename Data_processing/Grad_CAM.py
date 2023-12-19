@@ -36,29 +36,27 @@ def main(output_path, k, system):
     model = DenseNet121(spatial_dims=2, in_channels=10,
                         out_channels=1, dropout_prob=0.0).cuda()
 
-    K = 10
-    for fold in range(k):
-        output_path = output_path + f"CV_{fold}/"
-        if fold == 0:
-            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
-        elif fold == 1:
-            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
-        elif fold == 2:
-            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
-        elif fold == 3:
-            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
-        elif fold == 4:
-            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
-        elif fold == 5:
-            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
-        elif fold == 6:
-            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
-        elif fold == 7:
-            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
-        elif fold == 8:
-            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
-        elif fold == 9:
-            checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, fold)
+    output_path = output_path + f"CV_{k}/"
+    if k == 0:
+        checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
+    elif k == 1:
+        checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
+    elif k == 2:
+        checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
+    elif k == 3:
+        checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
+    elif k == 4:
+        checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
+    elif k == 5:
+        checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
+    elif k == 6:
+        checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
+    elif k == 7:
+        checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
+    elif k == 8:
+        checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
+    elif k == 9:
+        checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
 
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['net'])
@@ -302,5 +300,7 @@ def grad_cam_analysis(system, output_path, patient_ID, scan_date, model):
 if __name__ == "__main__":
 
     output_path = "/home/ashish/Ashish/UCAN/Results/GradCam_analysis/"
-    main(output_path, 0, 2)
+    K = 10
+    for fold in range(K):
+        main(output_path, fold, 2)
 
