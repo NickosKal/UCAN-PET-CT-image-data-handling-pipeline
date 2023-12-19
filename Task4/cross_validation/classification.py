@@ -74,7 +74,7 @@ def stratified_split(df_clean, k):
     return df_train, df_val
 
 outcome = "sex" # GT_diagnosis_label
-experiment = 1
+experiment = 2
 k_fold = 10
 learning_rate = 1e-4
 weight_decay = 1e-5

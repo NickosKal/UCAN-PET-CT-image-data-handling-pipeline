@@ -10,6 +10,7 @@ from monai.transforms import Compose, LoadImage, ToTensor, ScaleIntensity
 from tqdm import tqdm
 import pandas as pd
 import os
+from PIL import Image
 os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 import sys
 
@@ -38,24 +39,34 @@ def main(output_path, k, system):
 
     output_path = output_path + f"CV_{k}/"
     if k == 0:
+        print(f"Working on {k} fold")
         checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
     elif k == 1:
+        print(f"Working on {k} fold")
         checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
     elif k == 2:
+        print(f"Working on {k} fold")
         checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
     elif k == 3:
+        print(f"Working on {k} fold")
         checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
     elif k == 4:
+        print(f"Working on {k} fold")
         checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
     elif k == 5:
+        print(f"Working on {k} fold")
         checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
     elif k == 6:
+        print(f"Working on {k} fold")
         checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
     elif k == 7:
+        print(f"Working on {k} fold")
         checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
     elif k == 8:
+        print(f"Working on {k} fold")
         checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
     elif k == 9:
+        print(f"Working on {k} fold")
         checkpoint_path, _ = utils.load_checkpoints(2, "regression", None, 2, k)
 
     checkpoint = torch.load(checkpoint_path)
@@ -254,7 +265,6 @@ def grad_cam_analysis(system, output_path, patient_ID, scan_date, model):
 
     val_files, val_loader = prepare_data(df_temp, 1, shuffle=True, label="patient_age")
 
-
     for inputs, labels in val_loader:
         model.eval()
         inputs, labels = inputs.cuda(), labels.cuda()
@@ -267,35 +277,74 @@ def grad_cam_analysis(system, output_path, patient_ID, scan_date, model):
             resized_heatmap = nn.functional.interpolate(heatmap, size=(580, 512), mode='bilinear', align_corners=False)
             resized_heatmaps.append(resized_heatmap)
 
-        i = inputs[0,0,:,:].data.cpu().numpy()
-        h = resized_heatmaps[1][0,0,:,:].data.cpu().numpy()
+        for layer in range(4):
+            SUV_MIP = inputs[0,0,:,:].data.cpu().numpy()
+            CT_MIP = inputs[0,5,:,:].data.cpu().numpy()
+            h = resized_heatmaps[layer][0,0,:,:].data.cpu().numpy()
 
-        # Normalize the heatmap values
-        heatmap_normalized = h / np.max(h)
+            # Normalize the heatmap values
+            heatmap_normalized = h / np.max(h)
 
-        # Set a transparency factor for the heatmap overlay
-        alpha = 0.7
+            # Set a transparency factor for the heatmap overlay
+            alpha = 0.7
 
-        # Overlay the heatmap on the image using element-wise addition and transparency
-        overlayed_image = alpha * heatmap_normalized + (1 - alpha) * i
+            # Overlay the heatmap on the image using element-wise addition and transparency
+            overlayed_SUV_image = alpha * heatmap_normalized + (1 - alpha) * SUV_MIP
+            overlayed_CT_image = alpha * heatmap_normalized + (1 - alpha) * CT_MIP
+            # Clip values to stay within [0, 1] range
+            overlayed_SUV_image = np.clip(overlayed_SUV_image, 0, 1)
+            overlayed_CT_image = np.clip(overlayed_CT_image, 0, 1)
 
-        # Clip values to stay within [0, 1] range
-        overlayed_image = np.clip(overlayed_image, 0, 1)
+            save_path = os.path.join(output_path, patient_ID, scan_date)
 
-        save_path = os.path.join(output_path, patient_ID, scan_date)
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
 
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
+            plt.imshow(overlayed_SUV_image, cmap="coolwarm")
+            plt.axis("off")
+            plt.savefig(save_path + f"/overlap_SUV_layer_{layer}.jpg", dpi=400, bbox_inches='tight', pad_inches=0)
+            
+            plt.imshow(SUV_MIP, cmap="gray")
+            plt.axis("off")
+            plt.savefig(save_path + "/SUV_img.jpg", dpi=400, bbox_inches='tight', pad_inches=0)
 
-        plt.imshow(overlayed_image, cmap="coolwarm")
+            plt.imshow(overlayed_CT_image, cmap="coolwarm")
+            plt.axis("off")
+            plt.savefig(save_path + f"/overlap_CT_layer_{layer}.jpg", dpi=400, bbox_inches='tight', pad_inches=0)
+            
+            plt.imshow(CT_MIP, cmap="gray")
+            plt.axis("off")
+            plt.savefig(save_path + "/CT_img.jpg", dpi=400, bbox_inches='tight', pad_inches=0)
 
-        plt.savefig(save_path + "/overlap.jpg", dpi=400)
-        #plt.show()
+        print(f"Generating overlayed heatmap images for patient {patient_ID}")
+        
+        SUV_image = Image.open(save_path + "/SUV_img.jpg") # type: ignore
+        SUV_layer_1 = Image.open(save_path + "/overlap_SUV_layer_0.jpg") # type: ignore
+        SUV_layer_2 = Image.open(save_path + "/overlap_SUV_layer_1.jpg") # type: ignore
+        SUV_layer_3 = Image.open(save_path + "/overlap_SUV_layer_2.jpg") # type: ignore
+        SUV_layer_4 = Image.open(save_path + "/overlap_SUV_layer_3.jpg") # type: ignore
 
-        plt.imshow(i, cmap="gray")
+        CT_image = Image.open(save_path + "/CT_img.jpg") # type: ignore
+        CT_layer_1 = Image.open(save_path + "/overlap_CT_layer_0.jpg") # type: ignore
+        CT_layer_2 = Image.open(save_path + "/overlap_CT_layer_1.jpg") # type: ignore
+        CT_layer_3 = Image.open(save_path + "/overlap_CT_layer_2.jpg") # type: ignore
+        CT_layer_4 = Image.open(save_path + "/overlap_CT_layer_3.jpg") # type: ignore
 
-        plt.savefig(save_path + "/img.jpg", dpi=400)
-        print(patient_ID)
+        collage = Image.new("RGB", (SUV_image.size[0]*5, SUV_image.size[1]*2))
+        # Paste the SUV
+        collage.paste(SUV_image, (0,0))
+        collage.paste(SUV_layer_1, (SUV_image.size[0]*1,0))
+        collage.paste(SUV_layer_2, (SUV_image.size[0]*2,0))
+        collage.paste(SUV_layer_3, (SUV_image.size[0]*3,0))
+        collage.paste(SUV_layer_4, (SUV_image.size[0]*4,0))
+        # Paste the CT
+        collage.paste(CT_image, (0,SUV_image.size[1]))
+        collage.paste(CT_layer_1, (SUV_image.size[0]*1,SUV_image.size[1]))
+        collage.paste(CT_layer_2, (SUV_image.size[0]*2,SUV_image.size[1]))
+        collage.paste(CT_layer_3, (SUV_image.size[0]*3,SUV_image.size[1]))
+        collage.paste(CT_layer_4, (SUV_image.size[0]*4,SUV_image.size[1]))
+
+        collage.save(save_path + "/collage.jpg")
 
 if __name__ == "__main__":
 
