@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from pathlib import Path
+import regex as re
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -305,6 +306,11 @@ def find_distorted_examinations(path_of_exams, path_to_save):
     dataset = dataset[~dataset.directory.isin(exams_with_distorted_images_file.directory)]
     dataset.to_excel(path_to_save + "data_ready_for_filtering.xlsx")
 
+
+def natural_sortkey(string):          
+    tokenize = re.compile(r'(\d+)|(\D+)').findall
+    return tuple(int(num) if num else alpha for num, alpha in tokenize(string.name))
+
 def best_model_selection_from_fold(system, type, category, experiment_number, fold_number):
     if type == "regression":
         path = config["Source"]["paths"][f"source_path_system_{system}"] + config["regression_path"] + f"/Experiment_{experiment_number}/CV_{fold_number}/Network_Weights/"
@@ -312,7 +318,7 @@ def best_model_selection_from_fold(system, type, category, experiment_number, fo
         path = config["Source"]["paths"][f"source_path_system_{system}"] + config["classification_path"] + f"/{category}/Experiment_{experiment_number}/CV_{fold_number}/Network_Weights/"
     path_object = Path(path)
     models = path_object.glob("*")
-    models_sorted = sorted(models, key=lambda model: model.name)
+    models_sorted = sorted(models, key=natural_sortkey)
     best_model_path = path + [model.name for model in models_sorted][-1]
     epoch_to_continue = best_model_path.split("_")[-1].split(".")[0]
     return best_model_path, epoch_to_continue
