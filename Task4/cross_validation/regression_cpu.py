@@ -85,9 +85,9 @@ def main():
             metric_values = []
             metric_values_r_squared = []
             print("Network Initialization")
-            device = 'cpu' #torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             #print(torch.cuda.is_available())
-            print(device)
+            #print(device)
             model = DenseNet121(spatial_dims=2, in_channels=2, out_channels=1, dropout_prob=0.25).to(device)
             
             if pre_trained_weights:

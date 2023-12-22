@@ -22,6 +22,7 @@ import scipy.ndimage
 from sklearn.metrics import confusion_matrix, mean_absolute_error, r2_score, cohen_kappa_score
 from torcheval.metrics.functional import multiclass_auroc, multiclass_accuracy, multiclass_recall, multiclass_precision
 from Task4.cross_validation.generate_dataset import prepare_data
+from Task4.cross_validation.generate_dataset_cpu import prepare_data
 
 def working_system(system):
     if system == 1:
