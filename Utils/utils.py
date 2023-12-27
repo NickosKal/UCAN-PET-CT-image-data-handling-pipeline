@@ -249,13 +249,11 @@ def compute_suv(vol_img, PatientWeight, AcquisitionTime , RadiopharmaceuticalSta
     spacing = vol_img.GetSpacing()
     origin = vol_img.GetOrigin()
     direction = vol_img.GetDirection() 
-
-    #raw,spacing,origin,direction = imread(image_file_list)
     
     try:
         weight_grams = float(PatientWeight)*1000
     except:
-        weight_grams = 75000
+        weight_grams = 76274 #average weight from master data
         estimated = True
         
     try:
@@ -272,8 +270,9 @@ def compute_suv(vol_img, PatientWeight, AcquisitionTime , RadiopharmaceuticalSta
         # Calculate the dose decayed during procedure
         injected_dose_decay = injected_dose*decay; # in Bq        
     except:
-        decay = np.exp(-np.log(2)*(1.75*3600)/6588); # 90 min waiting time, 15 min preparation
-        injected_dose_decay = 420000000 * decay; # 420 MBq
+        decay = 0.61440 #average decay in metadata
+        injected_dose = 265987763 #average injected dose in metadata #265 MBq
+        injected_dose_decay = injected_dose * decay; 
         estimated = True
     
     # Calculate SUV # g/ml
