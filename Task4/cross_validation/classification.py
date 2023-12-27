@@ -42,7 +42,7 @@ from Utils import utils
 
 # reading main config file
 config = utils.read_config()
-system = 2 # 1 or 2
+system = 1 # 1 or 2
 if system == 1:
     PATH = config["Source"]["paths"]["source_path_system_1"]
 elif system == 2:
@@ -53,8 +53,8 @@ else:
     PATH = ""
     print("Invalid system")
 
-def stratified_split(df_clean, k):
-    df_list=[ df_clean[df_clean['GT_diagnosis_label']==x].reset_index(drop=True) for x in range(3) ]
+def stratified_split(df_clean, k, outcome):
+    df_list=[ df_clean[df_clean[outcome]==x].reset_index(drop=True) for x in range(3) ]
     factor_list= [ round(x.shape[0]/k_fold) for x in df_list ]
 
     if k == (k_fold - 1):
@@ -73,7 +73,7 @@ def stratified_split(df_clean, k):
 
     return df_train, df_val
 
-outcome = "sex" # GT_diagnosis_label
+outcome = "GT_diagnosis_label_new" #"sex" # GT_diagnosis_label
 experiment = 2
 k_fold = 10
 learning_rate = 1e-4
@@ -82,7 +82,9 @@ batch_size_train = 10
 args = {"num_workers": 2,
         "batch_size_val": 1}
 
-df_path = PATH + config["collages_for_classification_dataframe"]
+#df_path = PATH + config["collages_for_classification_dataframe"]
+df_path = PATH + config["collages_for_classification_dataframe_new_diagnosis"]
+
 df = pd.read_excel(df_path)
 df_sorted = df.sort_values(by="patient_ID")
 
@@ -99,7 +101,7 @@ if not os.path.exists(path_output_for_diagnosis):
 if outcome == "sex":
     folder_name = "Sex"
     output_channels = 2
-elif outcome == "GT_diagnosis_label":
+elif outcome == "GT_diagnosis_label" or outcome == "GT_diagnosis_label_new":
     folder_name = "Diagnosis"
     output_channels = 3
 else:
@@ -112,7 +114,7 @@ for k in tqdm(range(k_fold)):
 
     if k >= 0:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 100
+        max_epochs = 300
         val_interval = 1
         best_metric = 0
         best_metric_epoch = -1
@@ -134,7 +136,7 @@ for k in tqdm(range(k_fold)):
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_epochs)
 
-        if outcome == "GT_diagnosis_label":
+        if outcome == "GT_diagnosis_label" or outcome == "GT_diagnosis_label_new":
             if not os.path.exists(path_output_for_diagnosis + "CV_" + str(k) + '/Network_Weights/'):
                 os.makedirs(path_output_for_diagnosis + "CV_" + str(k) + '/Network_Weights/')
 
@@ -144,12 +146,12 @@ for k in tqdm(range(k_fold)):
             if not os.path.exists(path_output_for_diagnosis + "CV_" + str(k) + '/MIPs/'):
                 os.makedirs(path_output_for_diagnosis + "CV_" + str(k) + '/MIPs/')
 
-            df_train, df_val = stratified_split(df_sorted, k)
+            df_train, df_val = stratified_split(df_sorted, k, outcome)
 
             print("Number of exams in Training set: ", len(df_train))
             print("Number of exams in Validation set: ", len(df_val))
 
-            class_freq_diagnosis = np.unique(df_train["GT_diagnosis_label"], return_counts=True)[1]
+            class_freq_diagnosis = np.unique(df_train[outcome], return_counts=True)[1]
             class_weights_diagnosis = torch.tensor([float(class_freq_diagnosis[0]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[1]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[2]/np.sum(class_freq_diagnosis))]).to(device)
             print("class_weights_diagnosis: ", class_weights_diagnosis)
             loss_function_diagnosis = torch.nn.CrossEntropyLoss(weight=class_weights_diagnosis)
@@ -187,7 +189,7 @@ for k in tqdm(range(k_fold)):
             if not os.path.exists(path_output_for_sex + "CV_" + str(k) + '/MIPs/'):
                 os.makedirs(path_output_for_sex + "CV_" + str(k) + '/MIPs/')
 
-            df_train, df_val = stratified_split(df_sorted, k)
+            df_train, df_val = stratified_split(df_sorted, k, outcome)
 
             print("Number of exams in Training set: ", len(df_train))
             print("Number of exams in Validation set: ", len(df_val))

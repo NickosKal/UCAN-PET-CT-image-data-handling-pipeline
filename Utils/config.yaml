@@ -71,6 +71,7 @@ collages_with_nan_arrays_daraframe: "/Dataframes/Generated/df_of_collages_with_n
 collages_without_nan_arrays_daraframe: "/Dataframes/Generated/df_of_collages_without_nan_arrays.xlsx"
 collages_for_rergession_dataframe: "/Dataframes/Generated/dataset_for_model_regression_training.xlsx"
 collages_for_classification_dataframe: "/Dataframes/Generated/dataset_for_model_classification_training.xlsx"
+collages_for_classification_dataframe_new_diagnosis: "/Dataframes/Generated/dataset_for_model_classification_training_new_diagnosis.xlsx"
 
 # Results Folder
 classification_path: "/Results/classification"

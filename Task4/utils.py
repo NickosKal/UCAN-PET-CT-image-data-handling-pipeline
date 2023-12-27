@@ -81,6 +81,15 @@ def save_model(model, epoch, optimizer, k, path_Output):
     state = {'net': model.state_dict(), 'optimizer': optimizer.state_dict(), 'epoch': best_metric_epoch}
     torch.save(state, os.path.join(path_Output, "CV_" + str(k) + "/Network_Weights/best_model_{}.pth.tar".format(best_metric_epoch)))
 
+def calculate_specificity(confusion_matrix_df, GT_class, pred_class):
+    specificity = []
+    for cls in GT_class:
+        cls_orig = cls.split('_')[0]
+        FP = np.sum(np.array(confusion_matrix_df.loc[[i for i in GT_class if i!=cls], [cls_orig + "_Pred"]]))
+        TN = np.sum(np.array(confusion_matrix_df.loc[[i for i in GT_class if i!=cls], [i for i in pred_class if i!=cls_orig + "_Pred"]]))
+        specificity.append(TN/(TN+FP))
+    return specificity
+
 def validation_diagnosis_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_Output, outcome):
     df_performance = pd.DataFrame(columns=['patient_ID', 'scan_date', 'GT', 'prediction'])
 
@@ -131,13 +140,19 @@ def validation_diagnosis_classification(args, k, epoch, optimizer, model, df_val
 
     print("pred len: ", len(pred))
     print("GT len: ", len(GT))
-          
-    idx_classes = ["C81_GT", "C83_GT", "Others_GT"]
-    col_classes = ["C81_Pred", "C83_Pred", "Others_Pred"]
+
+    #diagnosis group      
+    #idx_classes = ["C81_GT", "C83_GT", "Others_GT"]
+    #col_classes = ["C81_Pred", "C83_Pred", "Others_Pred"]
+
+    #new diagnosis
+    idx_classes = ["C83.3_GT", "C81.1_GT", "C81.9_GT"]
+    col_classes = ["C83.3_Pred", "C81.1_Pred", "C81.9_Pred"]
+
     confusion_matrix_df = pd.DataFrame(confusion_matrix(GT, pred), columns=col_classes, index=idx_classes)
     print(confusion_matrix_df)
 
-    metric = calculate_multiclass_metrics(pred_prob, np.array(GT).astype(int))
+    metric = calculate_multiclass_metrics(pred_prob, np.array(GT).astype(int), confusion_matrix_df)
     print("Cohen Kappa score: ", metric)
 
     metric_values.append(metric)
@@ -216,14 +231,14 @@ def validation_sex_classification(args, k, epoch, optimizer, model, df_val, devi
     df_performance.to_csv(os.path.join(path_Output, "CV_" + str(k), "Metrics", "epoch_" + str(epoch) + ".csv"))
     return metric_values, best_metric
 
-def calculate_multiclass_metrics(pred_prob, GT):
+def calculate_multiclass_metrics(pred_prob, GT, confusion_matrix_df):
     c_k_score = cohen_kappa_score(np.argmax(np.array(pred_prob),axis=1), GT)
     
     pred_prob = torch.tensor(pred_prob)
     GT = torch.tensor(GT)
     sensitivity = multiclass_recall(pred_prob, GT, average=None, num_classes=3) 
     precision = multiclass_precision(pred_prob, GT, average=None, num_classes=3)
-    specificity = multiclass_accuracy(pred_prob, GT, average=None, num_classes=3)
+    specificity = calculate_specificity(confusion_matrix_df, GT_class=list(confusion_matrix_df.index), pred_class=list(confusion_matrix_df.columns))#multiclass_accuracy(pred_prob, GT, average=None, num_classes=3)
     auc = multiclass_auroc(pred_prob, GT, num_classes=3)
 
     results = [
