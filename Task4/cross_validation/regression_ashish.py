@@ -2,6 +2,7 @@ import os
 import shutil
 from tabnanny import verbose
 import tempfile
+from typing import Sequence
 import matplotlib.pyplot as plt
 import PIL
 import torch
@@ -23,12 +24,14 @@ from monai.transforms.compose import Compose
 from monai.transforms.io.array import LoadImage
 from monai.transforms.spatial.array import RandFlip,RandRotate,RandZoom
 from monai.transforms.intensity.array import ScaleIntensity
+from torchvision.models import efficientnet_b7, EfficientNet
 
 from monai.utils.misc import set_determinism
 #os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 torch.cuda.empty_cache()
 from tqdm import tqdm
-from generate_dataset import prepare_data
+#from generate_dataset import prepare_data
+from generate_dataset_cpu import prepare_data
 
 import sys
 
@@ -36,38 +39,61 @@ parent_dir = os.path.abspath('../')
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from Task4.utils import plot, train_regression, validation_regression
+from Task4.utils import plot, train_regression, validation_regression, working_system
 
 import torch
 import torch.nn as nn
 import torchvision.models as models
 from torchvision.models import densenet121
 
-experiment = "6"
+from Utils import utils
+
+# reading main config file
+config = utils.read_config()
+
+system = 2 # 1 or 2
+if system == 1:
+    PATH = config["Source"]["paths"]["source_path_system_1"]
+elif system == 2:
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    PATH = config["Source"]["paths"]["source_path_system_2"]
+    working_system(system)
+else:
+    PATH = ""
+    print("Invalid system")
+
+experiment = "3"
 k_fold = 10
 learning_rate = 1e-4
-weight_decay = 1e-3
-batch_size_train = 4
+weight_decay = 1e-5
+batch_size_train = 14
 args = {"num_workers": 4,
         "batch_size_val": 1} #25
 
+#efficientnet = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_efficientnet_b7', pretrained=True)
+
 #df = pd.read_excel("/media/andres/T7 Shield1/UCAN_project/dataset_for_training_regression.xlsx")
 #df = pd.read_excel("/home/ashish/Ashish/UCAN/dataset_for_training_regression_v2.xlsx")
+df_path = PATH + config['collages_for_rergession_dataframe']
+df = pd.read_excel(df_path)
+#df = pd.read_excel("//home/ashish/Ashish/UCAN/ReshapedCollages/dataset_for_model_training_v1.xlsx")
 
-df = pd.read_excel("//home/ashish/Ashish/UCAN/ReshapedCollages/dataset_for_model_training_v1.xlsx")
+df = df.sort_values(by="scan_date")
+df['scan_date'] = df['scan_date'].astype(str)
+df['unique_patient_ID_scan_date'] = df['patient_ID'] + '_' + df['scan_date']
+df = df.drop(columns=['patient_ID', 'scan_date'])
 
-df_sorted = df.sort_values(by="patient_ID")
+df = df.sort_values(by="unique_patient_ID_scan_date")
 
-try:
-    df_clean = df_sorted.drop(columns="Unnamed: 0").reset_index(drop=True)
-except:
-    df_clean = df_sorted.copy()
+path_output = PATH + config['regression_path']
+output_path = os.path.join(path_output, "Experiment_" + str(experiment) + "/")
 
 #path_output = "/media/andres/T7 Shield1/UCAN_project/Results/regression"
-path_output = "/home/ashish/Ashish/UCAN/Results/regression/experiment_" + experiment + "/"
+#path_output = "/home/ashish/Ashish/UCAN/Results/regression/experiment_" + experiment + "/"
+
 outcome = "patient_age" # "mtv"
 
-checkpoint_path = "/home/ashish/Ashish/UCAN/Results/regression/experiment_6/CV_0/Network_Weights/best_model_46.pth.tar"
+#heckpoint_path = "/home/ashish/Ashish/UCAN/Results/regression/experiment_6/CV_0/Network_Weights/best_model_46.pth.tar"
 
 pre_trained_weights = True
 
@@ -137,28 +163,29 @@ class WideResNetRegression(nn.Module):
 for k in tqdm(range(k_fold)):
     if k >= 0:
         print(f"Cross validation for fold {k}")
-        max_epochs = 500
+        max_epochs = 250
         val_interval = 1  #5
-        best_metric = 7.379 #1000000
-        best_metric_epoch = 46#-1
+        best_metric = 1000000#7.379 #1000000
+        best_metric_epoch = -1#46#-1
         metric_values = []
         metric_values_r_squared = []
         print("Network Initialization")
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         #print(torch.cuda.is_available())
         print(device)
-
-        #model = DenseNet121(spatial_dims=2, in_channels=10, out_channels=1, dropout_prob=0.25).to(device)
-        model = WideResNetRegression(widen_factor=8, depth=22, num_channels=10, dropout_rate=0.25).to(device)
+        #model = EfficientNet(inverted_residual_setting = 'Sequence', input_channels=2, out_channels=1, dropout=0.25).to(device)
+        model = DenseNet121(spatial_dims=2, in_channels=2, out_channels=1, dropout_prob=0.25).to(device)
+        #model = WideResNetRegression(widen_factor=8, depth=22, num_channels=10, dropout_rate=0.25).to(device)
         #model = torch.hub.load('pytorch/vision:v0.10.0', 'wide_resnet101_2', pretrained=True).to(device)
         
         if pre_trained_weights:
             # Use it in case we have pre trained weights
             print("Checkpoint Loading for Cross Validation: {}".format(k))
+            checkpoint_path, epoch_to_continue = utils.load_checkpoints(system, "regression", None, experiment, k)
             #checkpoint_path = load_checkpoint(args, k)
             checkpoint = torch.load(checkpoint_path)
             model.load_state_dict(checkpoint['net'])
-            pass
+            #pass
         else:
             print("Training from Scratch!") 
 
@@ -166,14 +193,14 @@ for k in tqdm(range(k_fold)):
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_epochs)
         
-        if not os.path.exists(path_output+"CV_"+str(k)+'/Network_Weights/'):
-            os.makedirs(path_output+"CV_"+str(k)+'/Network_Weights/')
+        if not os.path.exists(output_path+"CV_"+str(k)+'/Network_Weights/'):
+            os.makedirs(output_path+"CV_"+str(k)+'/Network_Weights/')
 
-        if not os.path.exists(path_output+"CV_"+str(k)+'/Metrics/'):
-            os.makedirs(path_output+"CV_"+str(k)+'/Metrics/')
+        if not os.path.exists(output_path+"CV_"+str(k)+'/Metrics/'):
+            os.makedirs(output_path+"CV_"+str(k)+'/Metrics/')
         
-        if not os.path.exists(path_output+"CV_"+str(k)+'/MIPs/'):
-            os.makedirs(path_output+"CV_"+str(k)+'/MIPs/')
+        if not os.path.exists(output_path+"CV_"+str(k)+'/MIPs/'):
+            os.makedirs(output_path+"CV_"+str(k)+'/MIPs/')
 
         #os.mkdir("dir path", k)
 
@@ -187,7 +214,7 @@ for k in tqdm(range(k_fold)):
         #patients_for_train = df_clean[:int(df_clean.shape[0] * 0.7)].patient_ID.tolist()
         #df_train = df_clean[df_clean.patient_ID.isin(patients_for_train)]
         #df_val = df_clean[~df_clean.patient_ID.isin(patients_for_train)]
-
+        """"
         factor = round(df.shape[0]/k_fold)
         if k == (k_fold - 1):
             patients_for_val = df_clean[factor*k:].patient_ID.tolist()
@@ -197,6 +224,16 @@ for k in tqdm(range(k_fold)):
             df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
 
         df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+        """
+        factor = round(df.shape[0]/k_fold)
+        if k == (k_fold - 1):
+            patients_for_val = df[factor*k:].unique_patient_ID_scan_date.tolist()
+            df_val = df[df.unique_patient_ID_scan_date.isin(patients_for_val)].reset_index(drop=True)
+        else:
+            patients_for_val = df[factor*k:factor*k+factor].unique_patient_ID_scan_date.tolist()
+            df_val = df[df.unique_patient_ID_scan_date.isin(patients_for_val)].reset_index(drop=True)
+
+        df_train = df[~df.unique_patient_ID_scan_date.isin(patients_for_val)].reset_index(drop=True)
 
         print("Number of patients in Training set: ", len(df_train))
         print("Number of patients in Valdation set: ", len(df_val))
@@ -205,21 +242,26 @@ for k in tqdm(range(k_fold)):
 
         train_loss = []
         for epoch in tqdm(range(max_epochs)):
-            epoch += 47
+            #epoch += 47
             #Training
+            if pre_trained_weights:
+                    epoch = epoch + int(epoch_to_continue) + 1
+            else:
+                pass
+
             epoch_loss, train_loss = train_regression(model, train_files, train_loader, optimizer, loss_function, device, train_loss)
             print(f"Training epoch {epoch} average loss: {epoch_loss:.4f}")
 
             #Validation
             if (epoch + 1) % val_interval == 0:
-                metric_values, best_metric_new = validation_regression(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, metric_values_r_squared, path_output, outcome, loss_function)
+                metric_values, best_metric_new = validation_regression(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, metric_values_r_squared, output_path, outcome, loss_function)
 
                 best_metric = best_metric_new
 
             #Save and plot
-            np.save(os.path.join(path_output, "CV_" + str(k) + "/MAE.npy"), metric_values)
+            np.save(os.path.join(output_path, "CV_" + str(k) + "/MAE.npy"), metric_values)
 
-            path_MAE = os.path.join(path_output, "CV_" + str(k), "epoch_vs_MAE.jpg")
+            path_MAE = os.path.join(output_path, "CV_" + str(k), "epoch_vs_MAE.jpg")
 
             if len(metric_values) > 2:
                 plot(metric_values, path_MAE, "MAE")
