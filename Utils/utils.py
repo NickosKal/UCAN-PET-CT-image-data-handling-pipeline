@@ -1,3 +1,4 @@
+from functools import reduce
 import yaml
 import os
 import sys
@@ -8,6 +9,7 @@ import pandas as pd
 from datetime import datetime
 from pathlib import Path
 import regex as re
+from sklearn.metrics import mean_absolute_error, r2_score, roc_curve, auc, cohen_kappa_score, confusion_matrix
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -242,7 +244,9 @@ def get_2D_projections(vol_img,modality,ptype,angle,invert_intensity = True, cli
     print(f'Finished generating {int(180.0/angle)+1} - {ptype} intensity 2D projections from the {modality} volume image! ')
 
 def compute_suv(vol_img, PatientWeight, AcquisitionTime , RadiopharmaceuticalStartTime, RadionuclideHalfLife, RadionuclideTotalDose):
-    
+    """
+    Compute the SUV image from PET scans.
+    """
     estimated = False
 
     raw = sitk.GetArrayFromImage(vol_img)    
@@ -281,6 +285,9 @@ def compute_suv(vol_img, PatientWeight, AcquisitionTime , RadiopharmaceuticalSta
     return suv, estimated, raw,spacing,origin,direction
 
 def find_distorted_examinations(path_of_exams, path_to_save):
+    """
+    Used in order to find examinations that contain distorted slices.
+    """
     directory_list = list()
     for root, dirs, files in os.walk(path_of_exams, topdown=False):
         for name in dirs:
@@ -311,6 +318,9 @@ def natural_sortkey(string):
     return tuple(int(num) if num else alpha for num, alpha in tokenize(string.name))
 
 def best_model_selection_from_fold(system, type, category, experiment_number, fold_number):
+    """
+    Fetch the best model from a selected fold and returns the path and the epoch of this model.
+    """
     if type == "regression":
         path = config["Source"]["paths"][f"source_path_system_{system}"] + config["regression_path"] + f"/Experiment_{experiment_number}/CV_{fold_number}/Network_Weights/"
     else:
@@ -323,6 +333,9 @@ def best_model_selection_from_fold(system, type, category, experiment_number, fo
     return best_model_path, epoch_to_continue
     
 def load_checkpoints(system, type, category, experiment_number, fold_number):
+    """
+    Function used to load the checkpoint of the model when retraining the model.
+    """
 
     if fold_number == 0:
         checkpoint_path, epoch_to_continue = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
@@ -346,3 +359,188 @@ def load_checkpoints(system, type, category, experiment_number, fold_number):
         checkpoint_path, epoch_to_continue = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
     
     return checkpoint_path, epoch_to_continue
+
+def best_model_selection_from_fold_metric_based(system, type, category, experiment_number, fold_number):
+    """
+    Return the best model of the selected fold based on the metrics.
+    """
+
+    repls = ("Network_Weights/best_model", "Metrics/epoch"), ("pth.tar", "csv")
+    
+    if type == "regression":
+        path = config["Source"]["paths"][f"source_path_system_{system}"] + config["regression_path"] + f"/Experiment_{experiment_number}/CV_{fold_number}/Network_Weights/"
+    else:
+        path = config["Source"]["paths"][f"source_path_system_{system}"] + config["classification_path"] + f"/{category}/Experiment_{experiment_number}/CV_{fold_number}/Network_Weights/"
+    
+    model_files = []
+    for dirs, subdirs, files in os.walk(path):
+        for file in files:
+            file_path = str(os.path.join(dirs, file))
+            file_path = file_path.replace('\\','/')
+            model_files.append(file_path)
+
+    sorted(model_files)
+
+    model_dict = dict()
+
+          
+    if type=="regression":   
+        best_metric = 100000000.0
+    else:
+        best_metric = -1
+
+    for model_path in model_files:
+        metric_path = reduce(lambda a, kv: a.replace(*kv), repls, model_path)
+        metric_data = pd.read_csv(metric_path)
+
+        if type=="regression":   
+            metric = mean_absolute_error(metric_data["GT"], metric_data["prediction (age)"])
+            if metric < best_metric:
+                best_metric = metric    
+        else:
+            if category=="Diagnosis":
+                metric = cohen_kappa_score(metric_data["prediction"], metric_data["GT"])
+                if metric > best_metric:
+                    best_metric = metric   
+            else:
+                auc, _ = calculate_metrics(metric_data["prediction_probability (sex)"], np.array(metric_data["GT"]).astype(int))
+                metric = auc
+                if metric > best_metric:
+                    best_metric = metric   
+
+        epoch_num = model_path.split("_")[-1].split(".")[0]
+        #print(metric, epoch_num, model_path)
+        if metric in model_dict.keys():
+            if epoch_num < model_dict[metric][1]:
+                model_dict[metric] = (model_path, epoch_num)
+            else:
+                pass
+        else:
+            model_dict[metric] = (model_path, epoch_num)
+          
+    #print(model_dict)
+    best_model_path = model_dict[best_metric][0]
+    epoch_to_continue = model_dict[best_metric][1] #best_model_path.split("_")[-1].split(".")[0]
+    #print("best: ", best_metric, epoch_to_continue, best_model_path)
+    return best_model_path, epoch_to_continue
+
+def calculate_metrics(pred_prob, GT):
+    """
+    Calculate the neccessary metrics to evaluate the model.
+    """
+
+    fpr, tpr, thresholds = roc_curve(GT, pred_prob, pos_label=1)
+    optimal_idx = np.argmax(tpr - fpr)
+    optimal_threshold = thresholds[optimal_idx]
+    pred_labels = (pred_prob >= optimal_threshold).astype(int)
+    #print("prediction: ", pred_labels)
+    #print("GT: ", GT)
+
+    # Calculate True Positives (TP), True Negatives (TN), False Positives (FP), and False Negatives (FN)
+    TP = ((pred_labels == 1) & (GT == 1)).sum()
+    TN = ((pred_labels == 0) & (GT == 0)).sum()
+    FP = ((pred_labels == 1) & (GT == 0)).sum()
+    FN = ((pred_labels == 0) & (GT == 1)).sum()
+    sensitivity = TP / (TP + FN)
+    # precision = TP / (TP + FP)
+    specificity = TN / (TN + FP)
+    auc_score = auc(fpr, tpr)
+
+    results = [
+        ["True Positives (TP)", TP],
+        ["True Negatives (TN)", TN],
+        ["False Positives (FP)", FP],
+        ["False Negatives (FN)", FN],
+        ["Sensitivity", sensitivity],
+        # ["Precision", precision],
+        ["Specificity", specificity],
+        ["AUC", auc_score]
+    ]
+    # Print results in tabular form
+    # print(tabulate(results, headers=["Metric", "Value"], tablefmt="fancy_grid"))
+    return auc_score, results
+
+def evaluate_best_models_all_folds_metric_based(system, type, category, experiment_number, folds_list):
+    """
+    Evaluate the best models from the experiment based on their metrics.
+    """
+
+    repls = ("Network_Weights/best_model", "Metrics/epoch"), ("pth.tar", "csv")
+
+    auc_from_all_folds = []
+    metric_data_list = []
+    for fold_number in folds_list:
+        best_model_path, _ = best_model_selection_from_fold_metric_based(system, type, category, experiment_number, fold_number)
+        best_metric_path = reduce(lambda a, kv: a.replace(*kv), repls, best_model_path)
+        print(best_metric_path)
+        metric_data = pd.read_csv(best_metric_path)
+        metric_data_list.append(metric_data)
+
+    all_metric_df = pd.concat(metric_data_list)
+
+    if type=="regression":        
+        metric_r_squared = r2_score(all_metric_df["GT"], all_metric_df["prediction (age)"])
+        metric_mae = mean_absolute_error(all_metric_df["GT"], all_metric_df["prediction (age)"])
+        metrics = {"metric_mae":metric_mae, "metric_r_squared":metric_r_squared}
+        return metrics
+    else:
+        if category=="Diagnosis":
+            c_k_score = cohen_kappa_score(all_metric_df["prediction"], all_metric_df["GT"])
+            idx_classes = ["C81_GT", "C83_GT", "Others_GT"]
+            col_classes = ["C81_Pred", "C83_Pred", "Others_Pred"]
+            confusion_matrix_df = pd.DataFrame(confusion_matrix(all_metric_df["GT"], all_metric_df["prediction"]), columns=col_classes, index=idx_classes)
+            metrics = {"c_k_score":c_k_score, "confusion_matrix":confusion_matrix_df}
+            return metrics
+        else:
+            for fold in folds_list:
+                best_model_path, _ = utils.best_model_selection_from_fold_metric_based(system, type, category, experiment_number, fold)
+                best_metric_path = reduce(lambda a, kv: a.replace(*kv), repls, best_model_path)
+                print(best_metric_path)
+                metric_data = pd.read_csv(best_metric_path)
+                #print(metric_data.columns)
+                auc, _  = calculate_metrics(metric_data["prediction_probability (sex)"], np.array(metric_data["GT"]).astype(int) )  #"prediction_probability_male" for exp1, prediction_probability (sex) for exp 2
+                auc_from_all_folds.append(auc)
+            return np.mean(auc_from_all_folds)
+
+def evaluate_best_models_all_folds(system, type, category, experiment_number, folds_list):
+    """
+    Evaluate the best models from all the folds.
+    """
+    
+    repls = ("Network_Weights/best_model", "Metrics/epoch"), ("pth.tar", "csv")
+
+    auc_from_all_folds = []
+    metric_data_list = []
+    for fold_number in folds_list:
+        best_model_path, _ = best_model_selection_from_fold(system, type, category, experiment_number, fold_number)
+        best_metric_path = reduce(lambda a, kv: a.replace(*kv), repls, best_model_path)
+        print(best_metric_path)
+        metric_data = pd.read_csv(best_metric_path)
+        metric_data_list.append(metric_data)
+
+    all_metric_df = pd.concat(metric_data_list)
+
+    if type=="regression":        
+        metric_r_squared = r2_score(all_metric_df["GT"], all_metric_df["prediction (age)"])
+        metric_mae = mean_absolute_error(all_metric_df["GT"], all_metric_df["prediction (age)"])
+        metrics = {"metric_mae":metric_mae, "metric_r_squared":metric_r_squared}
+        return metrics
+    else:
+        if category=="Diagnosis":
+            c_k_score = cohen_kappa_score(all_metric_df["prediction"], all_metric_df["GT"])
+            idx_classes = ["C81_GT", "C83_GT", "Others_GT"]
+            col_classes = ["C81_Pred", "C83_Pred", "Others_Pred"]
+            confusion_matrix_df = pd.DataFrame(confusion_matrix(all_metric_df["GT"], all_metric_df["prediction"]), columns=col_classes, index=idx_classes)
+            metrics = {"c_k_score":c_k_score, "confusion_matrix":confusion_matrix_df}
+            return metrics
+        else:
+            for fold in folds_list:
+                best_model_path, _ = best_model_selection_from_fold(system, type, category, experiment_number, fold)
+                best_metric_path = reduce(lambda a, kv: a.replace(*kv), repls, best_model_path)
+                print(best_metric_path)
+                metric_data = pd.read_csv(best_metric_path)
+                #print(metric_data.columns)
+                auc, _  = calculate_metrics(metric_data["prediction_probability (sex)"], np.array(metric_data["GT"]).astype(int) )  #"prediction_probability_male" for exp1, prediction_probability (sex) for exp 2
+                auc_from_all_folds.append(auc)
+            return np.mean(auc_from_all_folds)
+
