@@ -152,7 +152,8 @@ for k in tqdm(range(k_fold)):
             print("Number of exams in Validation set: ", len(df_val))
 
             class_freq_diagnosis = np.unique(df_train[outcome], return_counts=True)[1]
-            class_weights_diagnosis = torch.tensor([float(class_freq_diagnosis[0]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[1]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[2]/np.sum(class_freq_diagnosis))]).to(device)
+            class_weights_diagnosis = torch.tensor([float(class_frimport numpy as np
+import pandas as pdq_diagnosis[0]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[1]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[2]/np.sum(class_freq_diagnosis))]).to(device)
             print("class_weights_diagnosis: ", class_weights_diagnosis)
             loss_function_diagnosis = torch.nn.CrossEntropyLoss(weight=class_weights_diagnosis)
 
