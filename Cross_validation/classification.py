@@ -31,7 +31,7 @@ parent_dir = os.path.abspath('../')
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from Task4.utils import (plot_c_k_score, 
+from utils import (plot_c_k_score, 
                          train_classification, 
                          validation_sex_classification,
                          validation_diagnosis_classification,
@@ -42,7 +42,7 @@ from Utils import utils
 
 # reading main config file
 config = utils.read_config()
-system = 1 # 1 or 2
+system = 2 # 1 or 2
 if system == 1:
     PATH = config["Source"]["paths"]["source_path_system_1"]
 elif system == 2:
@@ -73,7 +73,7 @@ def stratified_split(df_clean, k, outcome):
 
     return df_train, df_val
 
-outcome = "GT_diagnosis_label_new" #"sex" # GT_diagnosis_label
+outcome = "GT_diagnosis_label" #"sex" # GT_diagnosis_label
 experiment = 2
 k_fold = 10
 learning_rate = 1e-4
@@ -82,8 +82,8 @@ batch_size_train = 10
 args = {"num_workers": 2,
         "batch_size_val": 1}
 
-#df_path = PATH + config["collages_for_classification_dataframe"]
-df_path = PATH + config["collages_for_classification_dataframe_new_diagnosis"]
+df_path = PATH + config["collages_for_classification_dataframe"]
+#df_path = PATH + config["collages_for_classification_dataframe_new_diagnosis"]
 
 df = pd.read_excel(df_path)
 df_sorted = df.sort_values(by="patient_ID")
@@ -114,7 +114,7 @@ for k in tqdm(range(k_fold)):
 
     if k >= 0:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 300
+        max_epochs = 500
         val_interval = 1
         best_metric = 0
         best_metric_epoch = -1
@@ -152,8 +152,7 @@ for k in tqdm(range(k_fold)):
             print("Number of exams in Validation set: ", len(df_val))
 
             class_freq_diagnosis = np.unique(df_train[outcome], return_counts=True)[1]
-            class_weights_diagnosis = torch.tensor([float(class_frimport numpy as np
-import pandas as pdq_diagnosis[0]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[1]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[2]/np.sum(class_freq_diagnosis))]).to(device)
+            class_weights_diagnosis = torch.tensor([float(class_freq_diagnosis[0]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[1]/np.sum(class_freq_diagnosis)), float(class_freq_diagnosis[2]/np.sum(class_freq_diagnosis))]).to(device)
             print("class_weights_diagnosis: ", class_weights_diagnosis)
             loss_function_diagnosis = torch.nn.CrossEntropyLoss(weight=class_weights_diagnosis)
 
