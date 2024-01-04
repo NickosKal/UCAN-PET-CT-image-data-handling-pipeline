@@ -27,8 +27,8 @@ else:
     print("Invalid system")
 
 # For regression: age
-#regression_metrics = utils.evaluate_best_models_all_folds(system=1, type="regression", category=None, experiment_number=3, folds_list=list(range(10)))
-#print(regression_metrics)
+regression_metrics = utils.evaluate_best_models_all_folds(system=1, type="regression", category=None, experiment_number=3, folds_list=list(range(10)))
+print(regression_metrics)
 
 # For classification: sex
 sex_classification_metrics = utils.evaluate_best_models_all_folds(system=1, type="classification", category="Sex", experiment_number=2, folds_list=list(range(10)))
