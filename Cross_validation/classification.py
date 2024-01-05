@@ -31,7 +31,7 @@ parent_dir = os.path.abspath('../')
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from utils import (plot_c_k_score, 
+from cross_val_utils import (plot_c_k_score, 
                          train_classification, 
                          validation_sex_classification,
                          validation_diagnosis_classification,

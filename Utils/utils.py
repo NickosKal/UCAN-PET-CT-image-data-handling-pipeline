@@ -493,7 +493,7 @@ def evaluate_best_models_all_folds_metric_based(system, type, category, experime
             return metrics
         else:
             for fold in folds_list:
-                best_model_path, _ = utils.best_model_selection_from_fold_metric_based(system, type, category, experiment_number, fold)
+                best_model_path, _ = best_model_selection_from_fold_metric_based(system, type, category, experiment_number, fold)
                 best_metric_path = reduce(lambda a, kv: a.replace(*kv), repls, best_model_path)
                 print(best_metric_path)
                 metric_data = pd.read_csv(best_metric_path)

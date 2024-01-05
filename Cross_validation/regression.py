@@ -35,7 +35,7 @@ parent_dir = os.path.abspath('../')
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from Task4.utils import plot, train_regression, validation_regression, working_system
+from cross_val_utils import plot, train_regression, validation_regression, working_system
 
 import torch
 import torch.nn as nn
