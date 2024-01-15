@@ -91,18 +91,17 @@ def calculate_specificity(confusion_matrix_df, GT_class, pred_class):
     return specificity
 
 def validation_diagnosis_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_Output, outcome):
-    df_performance = pd.DataFrame(columns=['patient_ID', 'scan_date', 'GT', 'prediction'])
+    df_performance = pd.DataFrame(columns=['unique_patient_ID_scan_date', 'GT', 'prediction'])
 
-    df_val["unique_pat_ID_scan_date"] = df_val.apply(lambda x: str(x["patient_ID"]) + "_" + str(x["scan_date"]), axis=1)
-    unique_pat_ID_scan_date = np.unique(df_val["unique_pat_ID_scan_date"])
+    unique_patient_ID_scan_date = np.unique(df_val["unique_patient_ID_scan_date"])
     pred_prob = []
     pred = []
     GT = []
     #metric_values = []
 
-    for pat_ID_scan_date in tqdm(unique_pat_ID_scan_date):
+    for pat_ID_scan_date in tqdm(unique_patient_ID_scan_date):
         # Patient-wise Validation
-        df_temp = df_val[df_val["unique_pat_ID_scan_date"] == pat_ID_scan_date].reset_index(drop=True)
+        df_temp = df_val[df_val["unique_patient_ID_scan_date"] == pat_ID_scan_date].reset_index(drop=True)
         pat_id, scan_date = pat_ID_scan_date.split('_')
         val_files, val_loader = prepare_data(args, df_temp, args["batch_size_val"], shuffle=False, label=outcome)
 
@@ -165,10 +164,9 @@ def validation_diagnosis_classification(args, k, epoch, optimizer, model, df_val
     return metric_values, best_metric
 
 def validation_sex_classification(args, k, epoch, optimizer, model, df_val, device, best_metric, metric_values, path_Output, outcome):
-    df_performance = pd.DataFrame(columns=['patient_ID', 'scan_date', 'GT', 'prediction'])
+    df_performance = pd.DataFrame(columns=['unique_patient_ID_scan_date', 'GT', 'prediction'])
 
-    df_val["unique_pat_ID_scan_date"] = df_val.apply(lambda x: str(x["patient_ID"]) + "_" + str(x["scan_date"]), axis=1)
-    unique_pat_ID_scan_date = np.unique(df_val["unique_pat_ID_scan_date"])
+    unique_patient_ID_scan_date = np.unique(df_val["unique_patient_ID_scan_date"])
     tp = 0
     fn = 0
     fp = 0
@@ -177,9 +175,9 @@ def validation_sex_classification(args, k, epoch, optimizer, model, df_val, devi
     GT = []
     #metric_values = []
 
-    for pat_ID_scan_date in tqdm(unique_pat_ID_scan_date):
+    for pat_ID_scan_date in tqdm(unique_patient_ID_scan_date):
         # Patient-wise Validation
-        df_temp = df_val[df_val["unique_pat_ID_scan_date"] == pat_ID_scan_date].reset_index(drop=True)
+        df_temp = df_val[df_val["unique_patient_ID_scan_date"] == pat_ID_scan_date].reset_index(drop=True)
         pat_id, scan_date = pat_ID_scan_date.split('_')
         val_files, val_loader = prepare_data(args, df_temp, args["batch_size_val"], shuffle=False, label=outcome)
 

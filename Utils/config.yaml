@@ -2,14 +2,14 @@
 # Source paths
 Source:
     paths:
-        source_path_system_1: "/media/andres/T7 Shield1/UCAN_project"
+        source_path_system_1: "/media/andres/T7 Shield/UCAN_project"
         source_path_system_2: "/home/ashish/Ashish/UCAN"
 
 # Selection script config variables
 selection:
     filenames:
-        path_to_exams_folder_system_1: "/media/andres/T7 Shield1/ucan_lymfom"
-        path_to_exams_folder_system_2: "/home/ashish/Ashish/T7 Shield1/ucan_lymfom"
+        path_to_exams_folder_system_1: "/media/andres/T7 Shield/ucan_lymfom"
+        path_to_exams_folder_system_2: "/home/ashish/Ashish/T7 Shield/ucan_lymfom"
 
 # Metadata extraction config variables
 metadata:

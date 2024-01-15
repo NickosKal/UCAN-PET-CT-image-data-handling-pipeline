@@ -47,7 +47,7 @@ from Utils import utils
 # reading main config file
 config = utils.read_config()
 
-system = 2 # 1 or 2
+system = 1 # 1 or 2
 if system == 1:
     PATH = config["Source"]["paths"]["source_path_system_1"]
 elif system == 2:
@@ -58,7 +58,7 @@ else:
     PATH = ""
     print("Invalid system")
 
-experiment = 2
+experiment = 5
 k_fold = 10
 learning_rate = 1e-4
 weight_decay = 1e-5

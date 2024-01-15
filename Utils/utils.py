@@ -539,8 +539,12 @@ def evaluate_best_models_all_folds(system, type, category, experiment_number, fo
                 best_metric_path = reduce(lambda a, kv: a.replace(*kv), repls, best_model_path)
                 print(best_metric_path)
                 metric_data = pd.read_csv(best_metric_path)
+                idx_classes = ["Female_GT", "Male_GT"]
+                col_classes = ["Female_Pred", "Male_Pred"]
                 #print(metric_data.columns)
-                auc, _  = calculate_metrics(metric_data["prediction_probability (sex)"], np.array(metric_data["GT"]).astype(int) )  #"prediction_probability_male" for exp1, prediction_probability (sex) for exp 2
+                auc, _  = calculate_metrics(all_metric_df["prediction_probability (sex)"], np.array(all_metric_df["GT"]).astype(int) )  #"prediction_probability_male" for exp1, prediction_probability (sex) for exp 2
+                confusion_matrix_df = pd.DataFrame(confusion_matrix(all_metric_df["GT"], all_metric_df["prediction"]), columns=col_classes, index=idx_classes)
                 auc_from_all_folds.append(auc)
-            return np.mean(auc_from_all_folds)
+                metrics = {"auc":np.mean(auc_from_all_folds), "confusion_matrix":confusion_matrix_df}
+            return metrics
 
