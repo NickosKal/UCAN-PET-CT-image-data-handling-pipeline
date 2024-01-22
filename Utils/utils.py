@@ -493,7 +493,7 @@ def evaluate_best_models_all_folds_metric_based(system, type, category, experime
             return metrics
         else:
             for fold in folds_list:
-                best_model_path, _ = utils.best_model_selection_from_fold_metric_based(system, type, category, experiment_number, fold)
+                best_model_path, _ = best_model_selection_from_fold_metric_based(system, type, category, experiment_number, fold)
                 best_metric_path = reduce(lambda a, kv: a.replace(*kv), repls, best_model_path)
                 print(best_metric_path)
                 metric_data = pd.read_csv(best_metric_path)
@@ -540,7 +540,11 @@ def evaluate_best_models_all_folds(system, type, category, experiment_number, fo
                 print(best_metric_path)
                 metric_data = pd.read_csv(best_metric_path)
                 #print(metric_data.columns)
+                idx_classes = ["Male", "Female"]
+                col_classes = ["Male_Pred", "Female_Pred"]
+                confusion_matrix_df = pd.DataFrame(confusion_matrix(all_metric_df["GT"], all_metric_df["prediction"]), columns=col_classes, index=idx_classes)
                 auc, _  = calculate_metrics(metric_data["prediction_probability (sex)"], np.array(metric_data["GT"]).astype(int) )  #"prediction_probability_male" for exp1, prediction_probability (sex) for exp 2
                 auc_from_all_folds.append(auc)
-            return np.mean(auc_from_all_folds)
+                metrics={'mean AuC':np.mean(auc_from_all_folds), 'confusion matrix':confusion_matrix_df }
+            return metrics
 
