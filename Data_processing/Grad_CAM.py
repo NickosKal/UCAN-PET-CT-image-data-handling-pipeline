@@ -348,7 +348,7 @@ def grad_cam_analysis(system, output_path, patient_ID, scan_date, model):
 
 if __name__ == "__main__":
 
-    output_path = "/home/ashish/Ashish/UCAN/Results/GradCam_analysis/"
+    output_path = config["Source"]["paths"][f"source_path_system_{system}"] + "/Results/GradCam_analysis/"
     K = 10
     for fold in range(K):
         main(output_path, fold, 2)

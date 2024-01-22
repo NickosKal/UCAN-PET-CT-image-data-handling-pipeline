@@ -31,7 +31,7 @@ parent_dir = os.path.abspath('../')
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from utils import (plot_c_k_score, 
+from cross_val_utils import (plot_c_k_score, 
                          train_classification, 
                          validation_sex_classification,
                          validation_diagnosis_classification,
@@ -42,7 +42,7 @@ from Utils import utils
 
 # reading main config file
 config = utils.read_config()
-system = 2 # 1 or 2
+system = 1 # 1 or 2
 if system == 1:
     PATH = config["Source"]["paths"]["source_path_system_1"]
 elif system == 2:
@@ -60,21 +60,21 @@ def stratified_split(df_clean, k, outcome):
     if k == (k_fold - 1):
         patients_for_val = []
         for x,f in zip(df_list,factor_list):
-            patients_for_val.extend(x[f*k:].patient_ID.tolist())
-        df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+            patients_for_val.extend(x[f*k:].unique_patient_ID_scan_date.tolist())
+        df_val = df_clean[df_clean.unique_patient_ID_scan_date.isin(patients_for_val)].reset_index(drop=True)
 
     else:
         patients_for_val = []
         for x,f in zip(df_list,factor_list):
-            patients_for_val.extend(x[f*k:f*k+f].patient_ID.tolist())
-        df_val = df_clean[df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+            patients_for_val.extend(x[f*k:f*k+f].unique_patient_ID_scan_date.tolist())
+        df_val = df_clean[df_clean.unique_patient_ID_scan_date.isin(patients_for_val)].reset_index(drop=True)
 
-    df_train = df_clean[~df_clean.patient_ID.isin(patients_for_val)].reset_index(drop=True)
+    df_train = df_clean[~df_clean.unique_patient_ID_scan_date.isin(patients_for_val)].reset_index(drop=True)
 
     return df_train, df_val
 
-outcome = "GT_diagnosis_label" #"sex" # GT_diagnosis_label
-experiment = 2
+outcome = "GT_diagnosis_label_new" #"sex" # GT_diagnosis_label
+experiment = 4
 k_fold = 10
 learning_rate = 1e-4
 weight_decay = 1e-5
@@ -82,12 +82,16 @@ batch_size_train = 10
 args = {"num_workers": 2,
         "batch_size_val": 1}
 
-df_path = PATH + config["collages_for_classification_dataframe"]
-#df_path = PATH + config["collages_for_classification_dataframe_new_diagnosis"]
+# df_path = PATH + config["collages_for_classification_dataframe"]
+df_path = PATH + config["collages_for_classification_dataframe_new_diagnosis"]
 
 df = pd.read_excel(df_path)
-df_sorted = df.sort_values(by="patient_ID")
+df_sorted = df.sort_values(by="scan_date")
+df_sorted['scan_date'] = df_sorted['scan_date'].astype(str)
+df_sorted['unique_patient_ID_scan_date'] = df_sorted['patient_ID'] + '_' + df_sorted['scan_date']
+df_sorted = df_sorted.drop(columns=['patient_ID', 'scan_date'])
 
+# df = df.sort_values(by="unique_patient_ID_scan_date")
 path_output = PATH + config['classification_path']
 
 path_output_for_sex = os.path.join(path_output, "Sex" + "/" + "Experiment_" + str(experiment) + "/")
@@ -114,7 +118,7 @@ for k in tqdm(range(k_fold)):
 
     if k >= 0:
         print("Cross Validation for fold: {}".format(k))
-        max_epochs = 500
+        max_epochs = 100
         val_interval = 1
         best_metric = 0
         best_metric_epoch = -1
@@ -194,8 +198,8 @@ for k in tqdm(range(k_fold)):
             print("Number of exams in Training set: ", len(df_train))
             print("Number of exams in Validation set: ", len(df_val))
 
-            print("Patient's sex distribution in Training set: ", df_train.groupby('sex')['patient_ID'].nunique())
-            print("Patient's sex distribution in Validation set: ", df_val.groupby('sex')['patient_ID'].nunique())
+            print("Patient's sex distribution in Training set: ", df_train.groupby('sex')['unique_patient_ID_scan_date'].nunique())
+            print("Patient's sex distribution in Validation set: ", df_val.groupby('sex')['unique_patient_ID_scan_date'].nunique())
 
             # Use this when training for sex classification
             class_freq_sex = np.unique(df_train["sex"], return_counts=True)[1]
